@@ -1,0 +1,791 @@
+import aiosqlite
+from datetime import datetime
+import traceback
+
+
+class Database:
+    def __init__(self, db_name: str = 'fabricacao.db'):
+        self.db_name = db_name
+
+    async def init_db(self):
+        """Inicializa o banco de dados criando as tabelas necessárias."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                # --- Config por servidor ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS config_servidores (
+                        guild_id INTEGER PRIMARY KEY,
+                        canal_log_id INTEGER,
+                        cargo_gerente_id INTEGER,
+                        cargo_meta_paga_id INTEGER,
+                        canal_log_meta_id INTEGER,
+                        cargo_vendedor_id INTEGER,
+                        cargo_fabricante_id INTEGER,
+                        data_configuracao TEXT
+                    )
+                ''')
+
+                # Garantir colunas novas caso o banco já exista
+                for col in ["cargo_vendedor_id", "cargo_fabricante_id"]:
+                    try:
+                        await db.execute(f"ALTER TABLE config_servidores ADD COLUMN {col} INTEGER")
+                    except Exception:
+                        pass
+
+                # --- Logs de fabricação ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS logs_fabricacao (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        user_name TEXT NOT NULL,
+                        produto_id TEXT NOT NULL,
+                        produto_nome TEXT NOT NULL,
+                        quantidade INTEGER NOT NULL,
+                        custo_total REAL NOT NULL,
+                        materiais TEXT NOT NULL,
+                        data_fabricacao TEXT NOT NULL
+                    )
+                ''')
+
+                # --- Logs de vendas ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS logs_vendas (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        user_name TEXT NOT NULL,
+                        produto_id TEXT NOT NULL,
+                        produto_nome TEXT NOT NULL,
+                        quantidade INTEGER NOT NULL,
+                        valor_total REAL NOT NULL,
+                        comprador TEXT,
+                        data_venda TEXT NOT NULL
+                    )
+                ''')
+
+                # --- Preço unitário por produto (venda) ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS produtos_precos (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        produto_id TEXT NOT NULL,
+                        preco_unit REAL NOT NULL,
+                        atualizado_em TEXT NOT NULL,
+                        UNIQUE(guild_id, produto_id)
+                    )
+                ''')
+
+                # --- Encomendas ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS encomendas (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        user_name TEXT NOT NULL,
+                        produto_id TEXT NOT NULL,
+                        produto_nome TEXT NOT NULL,
+                        quantidade INTEGER NOT NULL,
+                        preco_unit REAL NOT NULL,
+                        cliente TEXT,
+                        status TEXT NOT NULL DEFAULT 'pendente',
+                        criado_em TEXT NOT NULL,
+                        confirmado_em TEXT,
+                        confirmado_por_id INTEGER
+                    )
+                ''')
+
+                # --- Banco pessoal ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS banco_usuarios (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        user_name TEXT NOT NULL,
+                        saldo REAL NOT NULL DEFAULT 0.0,
+                        ultima_fabricacao_valor REAL,
+                        ultima_venda_valor REAL,
+                        atualizado_em TEXT NOT NULL,
+                        UNIQUE(guild_id, user_id)
+                    )
+                ''')
+
+                # --- Extrato (ledger) do banco ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS movimentos_banco (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        user_name TEXT NOT NULL,
+                        origem TEXT NOT NULL,            -- venda, fabricacao, encomenda, ajuste
+                        delta REAL NOT NULL,
+                        saldo_antes REAL NOT NULL,
+                        saldo_depois REAL NOT NULL,
+                        motivo TEXT,
+                        ref_tipo TEXT,
+                        ref_id INTEGER,
+                        criado_em TEXT NOT NULL
+                    )
+                ''')
+
+                # --- Estoque (com reservado para encomendas) ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS estoque_produtos (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        produto_id TEXT NOT NULL,
+                        quantidade INTEGER NOT NULL DEFAULT 0,
+                        reservado INTEGER NOT NULL DEFAULT 0,
+                        atualizado_em TEXT NOT NULL,
+                        UNIQUE(guild_id, produto_id)
+                    )
+                ''')
+
+                # --- Estatísticas (mantidas) ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS estatisticas_servidor (
+                        guild_id INTEGER PRIMARY KEY,
+                        total_fabricacoes INTEGER DEFAULT 0,
+                        custo_total_gasto REAL DEFAULT 0.0,
+                        ultima_atualizacao TEXT
+                    )
+                ''')
+
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS estatisticas_usuario (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        total_fabricacoes INTEGER DEFAULT 0,
+                        custo_total_gasto REAL DEFAULT 0.0,
+                        ultima_fabricacao TEXT,
+                        UNIQUE(guild_id, user_id)
+                    )
+                ''')
+
+                # --- Metas (mantidas) ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS canais_meta (
+                        canal_id INTEGER PRIMARY KEY,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        data_criacao TEXT NOT NULL,
+                        ativo INTEGER DEFAULT 1
+                    )
+                ''')
+
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS metas_aprovadas (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        aprovado_por_id INTEGER NOT NULL,
+                        descricao TEXT,
+                        data_aprovacao TEXT NOT NULL
+                    )
+                ''')
+
+                await db.commit()
+                print("✅ Banco de dados inicializado com sucesso!")
+
+        except Exception as e:
+            print(f"❌ Erro ao inicializar banco de dados: {e}")
+            traceback.print_exc()
+
+    # -------------------- CONFIG --------------------
+
+    async def get_config_servidor(self, guild_id: int):
+        """Retorna a linha completa de config_servidores do servidor."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT guild_id, canal_log_id, cargo_gerente_id, cargo_meta_paga_id, canal_log_meta_id,
+                           cargo_vendedor_id, cargo_fabricante_id, data_configuracao
+                    FROM config_servidores
+                    WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    return await cursor.fetchone()
+        except Exception as e:
+            print(f"❌ Erro ao buscar config do servidor: {e}")
+            traceback.print_exc()
+            return None
+
+    async def set_canal_log(self, guild_id: int, canal_id: int):
+        """Define o canal de log para um servidor."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO config_servidores (guild_id, canal_log_id, data_configuracao)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(guild_id)
+                    DO UPDATE SET canal_log_id = ?, data_configuracao = ?
+                ''', (int(guild_id), int(canal_id), now, int(canal_id), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao configurar canal de log: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_canal_log(self, guild_id: int):
+        """Obtém o canal de log configurado para um servidor."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute(
+                    'SELECT canal_log_id FROM config_servidores WHERE guild_id = ?',
+                    (int(guild_id),)
+                ) as cursor:
+                    result = await cursor.fetchone()
+                    return result[0] if result else None
+        except Exception as e:
+            print(f"❌ Erro ao buscar canal de log: {e}")
+            traceback.print_exc()
+            return None
+
+    async def set_cargos_sistema(self, guild_id: int, cargo_vendedor_id: int = None, cargo_fabricante_id: int = None):
+        """Define cargos do sistema (vendedor/fabricante) sem mexer nos antigos."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT cargo_vendedor_id, cargo_fabricante_id
+                    FROM config_servidores WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    row = await cursor.fetchone()
+
+                atual_v, atual_f = (row[0], row[1]) if row else (None, None)
+                novo_v = cargo_vendedor_id if cargo_vendedor_id is not None else atual_v
+                novo_f = cargo_fabricante_id if cargo_fabricante_id is not None else atual_f
+
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO config_servidores (guild_id, cargo_vendedor_id, cargo_fabricante_id, data_configuracao)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(guild_id)
+                    DO UPDATE SET cargo_vendedor_id = ?, cargo_fabricante_id = ?, data_configuracao = ?
+                ''', (int(guild_id), novo_v, novo_f, now, novo_v, novo_f, now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao configurar cargos do sistema: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_cargos_sistema(self, guild_id: int):
+        """Retorna (cargo_vendedor_id, cargo_fabricante_id, cargo_gerente_id)."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT cargo_vendedor_id, cargo_fabricante_id, cargo_gerente_id
+                    FROM config_servidores WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    row = await cursor.fetchone()
+                    if not row:
+                        return None, None, None
+                    return row[0], row[1], row[2]
+        except Exception as e:
+            print(f"❌ Erro ao buscar cargos do sistema: {e}")
+            traceback.print_exc()
+            return None, None, None
+
+    # -------------------- CONFIG META --------------------
+
+    async def set_config_meta(self, guild_id: int, cargo_gerente_id: int = None,
+                              cargo_meta_paga_id: int = None, canal_log_meta_id: int = None):
+        """Configura o sistema de metas para um servidor."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT cargo_gerente_id, cargo_meta_paga_id, canal_log_meta_id
+                    FROM config_servidores WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    result = await cursor.fetchone()
+
+                if result:
+                    atual_gerente, atual_meta, atual_canal = result
+                    novo_gerente = cargo_gerente_id if cargo_gerente_id is not None else atual_gerente
+                    novo_meta = cargo_meta_paga_id if cargo_meta_paga_id is not None else atual_meta
+                    novo_canal = canal_log_meta_id if canal_log_meta_id is not None else atual_canal
+                else:
+                    novo_gerente = cargo_gerente_id
+                    novo_meta = cargo_meta_paga_id
+                    novo_canal = canal_log_meta_id
+
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO config_servidores
+                    (guild_id, cargo_gerente_id, cargo_meta_paga_id, canal_log_meta_id, data_configuracao)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(guild_id)
+                    DO UPDATE SET
+                        cargo_gerente_id = ?,
+                        cargo_meta_paga_id = ?,
+                        canal_log_meta_id = ?,
+                        data_configuracao = ?
+                ''', (
+                    int(guild_id), novo_gerente, novo_meta, novo_canal, now,
+                    novo_gerente, novo_meta, novo_canal, now
+                ))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao configurar sistema de metas: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_config_meta(self, guild_id: int):
+        """Retorna (guild_id, cargo_gerente_id, cargo_meta_paga_id, canal_log_meta_id)."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT guild_id, cargo_gerente_id, cargo_meta_paga_id, canal_log_meta_id
+                    FROM config_servidores
+                    WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    return await cursor.fetchone()
+        except Exception as e:
+            print(f"❌ Erro ao buscar config de meta: {e}")
+            traceback.print_exc()
+            return None
+
+    # -------------------- PREÇOS (VENDAS) --------------------
+
+    async def set_preco_produto(self, guild_id: int, produto_id: str, preco_unit: float):
+        """Define/atualiza o preço unitário de venda do produto."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO produtos_precos (guild_id, produto_id, preco_unit, atualizado_em)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(guild_id, produto_id)
+                    DO UPDATE SET preco_unit = ?, atualizado_em = ?
+                ''', (int(guild_id), str(produto_id), float(preco_unit), now, float(preco_unit), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao salvar preço do produto: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_preco_produto(self, guild_id: int, produto_id: str):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT preco_unit FROM produtos_precos
+                    WHERE guild_id = ? AND produto_id = ?
+                ''', (int(guild_id), str(produto_id))) as cursor:
+                    row = await cursor.fetchone()
+                    return float(row[0]) if row else None
+        except Exception as e:
+            print(f"❌ Erro ao buscar preço do produto: {e}")
+            traceback.print_exc()
+            return None
+
+    # -------------------- ESTOQUE --------------------
+
+    async def _ensure_estoque_produto(self, guild_id: int, produto_id: str):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT OR IGNORE INTO estoque_produtos
+                    (guild_id, produto_id, quantidade, reservado, atualizado_em)
+                    VALUES (?, ?, 0, 0, ?)
+                ''', (int(guild_id), str(produto_id), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao garantir estoque do produto: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_estoque_produto(self, guild_id: int, produto_id: str):
+        """Retorna (quantidade, reservado, disponivel)."""
+        try:
+            await self._ensure_estoque_produto(guild_id, produto_id)
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT quantidade, reservado
+                    FROM estoque_produtos
+                    WHERE guild_id = ? AND produto_id = ?
+                ''', (int(guild_id), str(produto_id))) as cursor:
+                    row = await cursor.fetchone()
+                    qtd = int(row[0] or 0) if row else 0
+                    res = int(row[1] or 0) if row else 0
+                    return qtd, res, (qtd - res)
+        except Exception as e:
+            print(f"❌ Erro ao obter estoque: {e}")
+            traceback.print_exc()
+            return 0, 0, 0
+
+    async def adicionar_estoque(self, guild_id: int, produto_id: str, quantidade: int):
+        """Soma no estoque (fabricação)."""
+        try:
+            await self._ensure_estoque_produto(guild_id, produto_id)
+            qtd, _, _ = await self.get_estoque_produto(guild_id, produto_id)
+            novo_qtd = int(qtd) + int(quantidade)
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE estoque_produtos
+                    SET quantidade = ?, atualizado_em = ?
+                    WHERE guild_id = ? AND produto_id = ?
+                ''', (novo_qtd, datetime.now().isoformat(), int(guild_id), str(produto_id)))
+                await db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Erro ao adicionar estoque: {e}")
+            traceback.print_exc()
+            return False
+
+    async def consumir_estoque(self, guild_id: int, produto_id: str, quantidade: int):
+        """Consome estoque disponível (venda). Retorna True/False."""
+        try:
+            qtd, res, disp = await self.get_estoque_produto(guild_id, produto_id)
+            if int(quantidade) > int(disp):
+                return False
+            novo_qtd = int(qtd) - int(quantidade)
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE estoque_produtos
+                    SET quantidade = ?, atualizado_em = ?
+                    WHERE guild_id = ? AND produto_id = ?
+                ''', (novo_qtd, datetime.now().isoformat(), int(guild_id), str(produto_id)))
+                await db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Erro ao consumir estoque: {e}")
+            traceback.print_exc()
+            return False
+
+    async def reservar_estoque(self, guild_id: int, produto_id: str, quantidade: int):
+        """Reserva estoque disponível para encomenda pendente."""
+        try:
+            qtd, res, disp = await self.get_estoque_produto(guild_id, produto_id)
+            if int(quantidade) > int(disp):
+                return False
+            novo_res = int(res) + int(quantidade)
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE estoque_produtos
+                    SET reservado = ?, atualizado_em = ?
+                    WHERE guild_id = ? AND produto_id = ?
+                ''', (novo_res, datetime.now().isoformat(), int(guild_id), str(produto_id)))
+                await db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Erro ao reservar estoque: {e}")
+            traceback.print_exc()
+            return False
+
+    async def reservar_estoque_permitir_negativo(self, guild_id: int, produto_id: str, quantidade: int):
+        """
+        Reserva mesmo sem disponível (permite encomenda criar "negativo").
+        Mantém a lógica de reserva: só mexe no reservado; o total só cai na confirmação.
+        """
+        try:
+            await self._ensure_estoque_produto(guild_id, produto_id)
+            qtd, res, _ = await self.get_estoque_produto(guild_id, produto_id)
+            novo_res = int(res) + int(quantidade)
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE estoque_produtos
+                    SET reservado = ?, atualizado_em = ?
+                    WHERE guild_id = ? AND produto_id = ?
+                ''', (novo_res, datetime.now().isoformat(), int(guild_id), str(produto_id)))
+                await db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Erro ao reservar estoque (negativo): {e}")
+            traceback.print_exc()
+            return False
+
+    async def confirmar_reserva_encomenda(self, guild_id: int, produto_id: str, quantidade: int):
+        """Ao confirmar encomenda: tira do reservado e do total (pode ficar negativo no total)."""
+        try:
+            qtd, res, _ = await self.get_estoque_produto(guild_id, produto_id)
+            if int(quantidade) > int(res):
+                return False
+            novo_res = int(res) - int(quantidade)
+            novo_qtd = int(qtd) - int(quantidade)
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE estoque_produtos
+                    SET quantidade = ?, reservado = ?, atualizado_em = ?
+                    WHERE guild_id = ? AND produto_id = ?
+                ''', (novo_qtd, novo_res, datetime.now().isoformat(), int(guild_id), str(produto_id)))
+                await db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Erro ao confirmar reserva: {e}")
+            traceback.print_exc()
+            return False
+
+    # -------------------- BANCO --------------------
+
+    async def _ensure_banco_usuario(self, guild_id: int, user_id: int, user_name: str):
+        async with aiosqlite.connect(self.db_name) as db:
+            await db.execute('''
+                INSERT INTO banco_usuarios (guild_id, user_id, user_name, saldo, atualizado_em)
+                VALUES (?, ?, ?, 0.0, ?)
+                ON CONFLICT(guild_id, user_id)
+                DO UPDATE SET user_name = ?, atualizado_em = ?
+            ''', (
+                int(guild_id), int(user_id), str(user_name), datetime.now().isoformat(),
+                str(user_name), datetime.now().isoformat()
+            ))
+            await db.commit()
+
+    async def get_banco_usuario(self, guild_id: int, user_id: int, user_name: str):
+        try:
+            await self._ensure_banco_usuario(guild_id, user_id, user_name)
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT saldo, ultima_fabricacao_valor, ultima_venda_valor
+                    FROM banco_usuarios
+                    WHERE guild_id = ? AND user_id = ?
+                ''', (int(guild_id), int(user_id))) as cursor:
+                    row = await cursor.fetchone()
+                    if not row:
+                        return 0.0, None, None
+                    return float(row[0] or 0.0), row[1], row[2]
+        except Exception as e:
+            print(f"❌ Erro ao obter banco do usuário: {e}")
+            traceback.print_exc()
+            return 0.0, None, None
+
+    async def aplicar_movimento_banco(self, guild_id: int, user_id: int, user_name: str,
+                                     delta: float, ultima_fabricacao_valor=None, ultima_venda_valor=None,
+                                     origem: str = "sistema", motivo: str = None, ref_tipo: str = None, ref_id: int = None):
+        """Aplica delta e registra no extrato."""
+        try:
+            await self._ensure_banco_usuario(guild_id, user_id, user_name)
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT saldo, ultima_fabricacao_valor, ultima_venda_valor
+                    FROM banco_usuarios
+                    WHERE guild_id = ? AND user_id = ?
+                ''', (int(guild_id), int(user_id))) as cursor:
+                    row = await cursor.fetchone()
+
+                saldo_atual = float(row[0] or 0.0) if row else 0.0
+                fab_atual = row[1] if row else None
+                venda_atual = row[2] if row else None
+
+                novo_saldo = saldo_atual + float(delta)
+                novo_fab = ultima_fabricacao_valor if ultima_fabricacao_valor is not None else fab_atual
+                novo_venda = ultima_venda_valor if ultima_venda_valor is not None else venda_atual
+
+                await db.execute('''
+                    UPDATE banco_usuarios
+                    SET saldo = ?,
+                        ultima_fabricacao_valor = ?,
+                        ultima_venda_valor = ?,
+                        user_name = ?,
+                        atualizado_em = ?
+                    WHERE guild_id = ? AND user_id = ?
+                ''', (
+                    float(novo_saldo),
+                    (float(novo_fab) if novo_fab is not None else None),
+                    (float(novo_venda) if novo_venda is not None else None),
+                    str(user_name),
+                    datetime.now().isoformat(),
+                    int(guild_id), int(user_id)
+                ))
+
+                await db.execute('''
+                    INSERT INTO movimentos_banco
+                    (guild_id, user_id, user_name, origem, delta, saldo_antes, saldo_depois, motivo, ref_tipo, ref_id, criado_em)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    int(guild_id), int(user_id), str(user_name),
+                    str(origem),
+                    float(delta),
+                    float(saldo_atual),
+                    float(novo_saldo),
+                    (str(motivo) if motivo else None),
+                    (str(ref_tipo) if ref_tipo else None),
+                    (int(ref_id) if ref_id is not None else None),
+                    datetime.now().isoformat()
+                ))
+
+                await db.commit()
+                return float(novo_saldo)
+        except Exception as e:
+            print(f"❌ Erro ao aplicar movimento no banco: {e}")
+            traceback.print_exc()
+            return None
+
+    async def get_extrato_banco(self, guild_id: int, user_id: int, limite: int = 50):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT origem, delta, saldo_antes, saldo_depois, motivo, ref_tipo, ref_id, criado_em
+                    FROM movimentos_banco
+                    WHERE guild_id = ? AND user_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(user_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao buscar extrato: {e}")
+            traceback.print_exc()
+            return []
+
+    # -------------------- LOGS PRINCIPAIS --------------------
+
+    async def registrar_fabricacao(self, guild_id: int, user_id: int, user_name: str,
+                                   produto_id: str, produto_nome: str, quantidade: int,
+                                   custo_total: float, materiais: str):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                cursor = await db.execute('''
+                    INSERT INTO logs_fabricacao 
+                    (guild_id, user_id, user_name, produto_id, produto_nome, quantidade, custo_total, materiais, data_fabricacao)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    int(guild_id), int(user_id), str(user_name),
+                    str(produto_id), str(produto_nome), int(quantidade),
+                    float(custo_total), str(materiais), datetime.now().isoformat()
+                ))
+                await db.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"❌ Erro ao registrar fabricação: {e}")
+            traceback.print_exc()
+            return None
+
+    async def registrar_venda(self, guild_id: int, user_id: int, user_name: str,
+                              produto_id: str, produto_nome: str, quantidade: int,
+                              valor_total: float, comprador: str = None):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                cursor = await db.execute('''
+                    INSERT INTO logs_vendas
+                    (guild_id, user_id, user_name, produto_id, produto_nome, quantidade, valor_total, comprador, data_venda)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    int(guild_id), int(user_id), str(user_name),
+                    str(produto_id), str(produto_nome),
+                    int(quantidade), float(valor_total), comprador,
+                    datetime.now().isoformat()
+                ))
+                await db.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"❌ Erro ao registrar venda: {e}")
+            traceback.print_exc()
+            return None
+
+    async def criar_encomenda(self, guild_id: int, user_id: int, user_name: str,
+                              produto_id: str, produto_nome: str, quantidade: int,
+                              preco_unit: float, cliente: str = None):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                cursor = await db.execute('''
+                    INSERT INTO encomendas
+                    (guild_id, user_id, user_name, produto_id, produto_nome, quantidade, preco_unit, cliente, status, criado_em)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?)
+                ''', (
+                    int(guild_id), int(user_id), str(user_name),
+                    str(produto_id), str(produto_nome),
+                    int(quantidade), float(preco_unit), cliente,
+                    datetime.now().isoformat()
+                ))
+                await db.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"❌ Erro ao criar encomenda: {e}")
+            traceback.print_exc()
+            return None
+
+    async def confirmar_encomenda(self, encomenda_id: int, confirmado_por_id: int):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE encomendas
+                    SET status = 'confirmada',
+                        confirmado_em = ?,
+                        confirmado_por_id = ?
+                    WHERE id = ? AND status = 'pendente'
+                ''', (datetime.now().isoformat(), int(confirmado_por_id), int(encomenda_id)))
+
+                await db.commit()
+
+                async with db.execute('SELECT status FROM encomendas WHERE id = ?', (int(encomenda_id),)) as cursor:
+                    row = await cursor.fetchone()
+                    return (row is not None and row[0] == 'confirmada')
+        except Exception as e:
+            print(f"❌ Erro ao confirmar encomenda: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_encomenda_por_id(self, encomenda_id: int):
+        """
+        Retorna:
+        (guild_id, user_id, user_name, produto_id, produto_nome, quantidade, preco_unit, cliente, status)
+        """
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT guild_id, user_id, user_name, produto_id, produto_nome, quantidade, preco_unit, cliente, status
+                    FROM encomendas
+                    WHERE id = ?
+                ''', (int(encomenda_id),)) as cursor:
+                    return await cursor.fetchone()
+        except Exception as e:
+            print(f"❌ Erro ao buscar encomenda: {e}")
+            traceback.print_exc()
+            return None
+
+    # -------------------- CONSULTAS PARA /BANCO --------------------
+
+    async def get_logs_usuario_fabricacao(self, guild_id: int, user_id: int, limite: int = 30):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT produto_nome, quantidade, custo_total, data_fabricacao, materiais
+                    FROM logs_fabricacao
+                    WHERE guild_id = ? AND user_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(user_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao buscar logs de fabricação: {e}")
+            traceback.print_exc()
+            return []
+
+    async def get_logs_usuario_vendas(self, guild_id: int, user_id: int, limite: int = 30):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT produto_nome, quantidade, valor_total, comprador, data_venda
+                    FROM logs_vendas
+                    WHERE guild_id = ? AND user_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(user_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao buscar logs de vendas: {e}")
+            traceback.print_exc()
+            return []
+
+    async def limpar_dados_servidor(self, guild_id: int):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('DELETE FROM logs_fabricacao WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM logs_vendas WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM encomendas WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM produtos_precos WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM banco_usuarios WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM movimentos_banco WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM estoque_produtos WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM config_servidores WHERE guild_id = ?', (int(guild_id),))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao limpar dados do servidor: {e}")
+            traceback.print_exc()
+            return False
