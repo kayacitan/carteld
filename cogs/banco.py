@@ -1,4 +1,3 @@
-# banco.py
 import discord
 from discord import ui, app_commands
 from discord.ext import commands
@@ -19,7 +18,7 @@ class EditarSaldoModal(ui.Modal):
         self.alvo = alvo
 
         self.delta = ui.TextInput(
-            label="Valor (use negativo para remover)",
+            label="Valor (use negativo para remover - )",
             placeholder="Ex: 10000 ou -5000",
             required=True,
             min_length=1,

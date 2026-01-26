@@ -20,15 +20,20 @@ async def on_ready():
         print(f'Erro ao sincronizar comandos: {e}')
 
 
+COGS = [
+    'cogs.boasvindas',
+    'cogs.registro',
+    'cogs.fabricacao',
+    'cogs.config',
+    'cogs.meta',
+    'cogs.vendas',
+    'cogs.banco',
+    'cogs.estoque',
+]
+
 async def load_extensions():
-    await bot.load_extension('cogs.boasvindas')
-    await bot.load_extension('cogs.registro')
-    await bot.load_extension('cogs.fabricacao')
-    await bot.load_extension('cogs.config')
-    await bot.load_extension('cogs.meta')
-    await bot.load_extension('cogs.vendas')
-    await bot.load_extension('cogs.banco')
-    await bot.load_extension('cogs.estoque')
+    for cog in COGS:
+        await bot.load_extension(cog)
     print('Cogs carregados')
 
 

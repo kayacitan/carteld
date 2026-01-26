@@ -219,7 +219,6 @@ class ConfirmacaoView(ui.LayoutView):
                 materiais=self.materiais
             )
 
-            # ✅ ESTOQUE: fabricação soma no estoque (isso estava faltando)
             await self.db.adicionar_estoque(
                 guild_id=interaction.guild.id,
                 produto_id=self.produto_id,
@@ -236,7 +235,7 @@ class ConfirmacaoView(ui.LayoutView):
                 origem="fabricacao"
             )
 
-            # Criar LayoutView para o log
+            # Criar LayoutView para o logggg
             log_view = LogFabricacaoView(
                 usuario=interaction.user,
                 produto=self.produto,

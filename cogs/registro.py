@@ -9,7 +9,6 @@ CANAL_LOGS_ID = 1366148719967211612  # ID do canal onde as solicitações serão
 
 # --- O MODAL DE PREENCHIMENTO ---
 class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
-    # Campo para o nome (até 10 letras)
     nome = ui.TextInput(
         label='Nome (até 10 letras)',
         placeholder='Digite seu nome...',

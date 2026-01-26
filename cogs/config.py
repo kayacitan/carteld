@@ -13,7 +13,7 @@ class ConfigView(ui.LayoutView):
         container = ui.Container()
         container.add_item(ui.TextDisplay("# ⚙️ Configuração do Bot"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay("Selecione canais e cargos abaixo (sem precisar ID)."))
+        container.add_item(ui.TextDisplay("Selecione canais e cargos abaixo."))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         # Canal de logs (fabricação/vendas/encomendas/banco)
@@ -48,7 +48,7 @@ class ConfigView(ui.LayoutView):
         self.sel_cargo_gerente.callback = self._set_cargo_gerente
         container.add_item(ui.ActionRow(self.sel_cargo_gerente))
 
-        # Cargo meta paga (já existia)
+        # Cargo meta paga
         self.sel_cargo_meta = ui.RoleSelect(
             placeholder="✅ Selecionar cargo de meta paga",
             min_values=1,
@@ -66,7 +66,6 @@ class ConfigView(ui.LayoutView):
         self.sel_cargo_vendedor.callback = self._set_cargo_vendedor
         container.add_item(ui.ActionRow(self.sel_cargo_vendedor))
 
-        # Novo: cargo fabricante
         self.sel_cargo_fabricante = ui.RoleSelect(
             placeholder="🏭 Selecionar cargo de fabricante",
             min_values=1,
