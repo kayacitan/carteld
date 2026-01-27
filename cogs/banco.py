@@ -1,4 +1,3 @@
-# banco.py
 import discord
 from discord import ui, app_commands
 from discord.ext import commands
@@ -19,7 +18,7 @@ class EditarSaldoModal(ui.Modal):
         self.alvo = alvo
 
         self.delta = ui.TextInput(
-            label="Valor (use negativo para remover)",
+            label="Valor (use negativo para remover - )",
             placeholder="Ex: 10000 ou -5000",
             required=True,
             min_length=1,
@@ -76,20 +75,19 @@ class BancoView(ui.LayoutView):
         container = ui.Container()
         container.add_item(ui.TextDisplay("# 🏦 Banco do Usuário"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**👤 Usuário:** {alvo.mention} (ID: {alvo.id})"))
+        container.add_item(ui.TextDisplay(f"**👤 Usuário:** {alvo.mention}"))
         container.add_item(ui.TextDisplay(f"**💵 Caixa (atual):** {_fmt_money(saldo)}"))
         container.add_item(ui.TextDisplay(f"**🏭 Última fabricação:** {_fmt_money(ult_fab) if ult_fab is not None else '—'}"))
         container.add_item(ui.TextDisplay(f"**💰 Última venda:** {_fmt_money(ult_venda) if ult_venda is not None else '—'}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        btn_editar = ui.Button(label="Editar saldo", style=discord.ButtonStyle.primary)
+        btn_editar = ui.Button(label="⚙️ Editar saldo", style=discord.ButtonStyle.secondary)
         btn_editar.callback = self.editar_saldo
 
-        btn_transcrever = ui.Button(label="Transcrever", style=discord.ButtonStyle.secondary)
+        btn_transcrever = ui.Button(label="📎 Transcrever", style=discord.ButtonStyle.secondary)
         btn_transcrever.callback = self.transcrever
 
         container.add_item(ui.ActionRow(btn_editar, btn_transcrever))
-        container.accent_color = discord.Colour.green()
         self.add_item(container)
 
     async def editar_saldo(self, interaction: discord.Interaction):

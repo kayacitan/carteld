@@ -1,4 +1,4 @@
-import aiosqlite
+﻿import aiosqlite
 from datetime import datetime
 import traceback
 
@@ -21,12 +21,14 @@ class Database:
                         canal_log_meta_id INTEGER,
                         cargo_vendedor_id INTEGER,
                         cargo_fabricante_id INTEGER,
+                        cargo_membro_id INTEGER,
+                        cargo_morador_id INTEGER,
                         data_configuracao TEXT
                     )
                 ''')
 
                 # Garantir colunas novas caso o banco já exista
-                for col in ["cargo_vendedor_id", "cargo_fabricante_id"]:
+                for col in ["cargo_vendedor_id", "cargo_fabricante_id", "cargo_membro_id", "cargo_morador_id"]:
                     try:
                         await db.execute(f"ALTER TABLE config_servidores ADD COLUMN {col} INTEGER")
                     except Exception:
@@ -185,6 +187,22 @@ class Database:
                     )
                 ''')
 
+                # --- Registros pendentes (aprovacao persistente) ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS registros_pendentes (
+                        message_id INTEGER PRIMARY KEY,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        nome TEXT NOT NULL,
+                        rg TEXT NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'pendente',
+                        criado_em TEXT NOT NULL,
+                        resolvido_em TEXT,
+                        resolvido_por_id INTEGER,
+                        resultado TEXT
+                    )
+                ''')
+
                 await db.commit()
                 print("✅ Banco de dados inicializado com sucesso!")
 
@@ -200,7 +218,7 @@ class Database:
             async with aiosqlite.connect(self.db_name) as db:
                 async with db.execute('''
                     SELECT guild_id, canal_log_id, cargo_gerente_id, cargo_meta_paga_id, canal_log_meta_id,
-                           cargo_vendedor_id, cargo_fabricante_id, data_configuracao
+                           cargo_vendedor_id, cargo_fabricante_id, cargo_membro_id, cargo_morador_id, data_configuracao
                     FROM config_servidores
                     WHERE guild_id = ?
                 ''', (int(guild_id),)) as cursor:
@@ -288,6 +306,51 @@ class Database:
             traceback.print_exc()
             return None, None, None
 
+    async def set_cargos_boasvindas(self, guild_id: int, cargo_membro_id: int = None, cargo_morador_id: int = None):
+        """Define cargos de boas-vindas (membro/morador) sem mexer nos outros."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT cargo_membro_id, cargo_morador_id
+                    FROM config_servidores WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    row = await cursor.fetchone()
+
+                atual_m, atual_r = (row[0], row[1]) if row else (None, None)
+                novo_m = cargo_membro_id if cargo_membro_id is not None else atual_m
+                novo_r = cargo_morador_id if cargo_morador_id is not None else atual_r
+
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO config_servidores (guild_id, cargo_membro_id, cargo_morador_id, data_configuracao)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(guild_id)
+                    DO UPDATE SET cargo_membro_id = ?, cargo_morador_id = ?, data_configuracao = ?
+                ''', (int(guild_id), novo_m, novo_r, now, novo_m, novo_r, now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao configurar cargos de boas-vindas: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_cargos_boasvindas(self, guild_id: int):
+        """Retorna (cargo_membro_id, cargo_morador_id)."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT cargo_membro_id, cargo_morador_id
+                    FROM config_servidores WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    row = await cursor.fetchone()
+                    if not row:
+                        return None, None
+                    return row[0], row[1]
+        except Exception as e:
+            print(f"❌ Erro ao buscar cargos de boas-vindas: {e}")
+            traceback.print_exc()
+            return None, None
+
     # -------------------- CONFIG META --------------------
 
     async def set_config_meta(self, guild_id: int, cargo_gerente_id: int = None,
@@ -347,6 +410,56 @@ class Database:
             print(f"❌ Erro ao buscar config de meta: {e}")
             traceback.print_exc()
             return None
+
+    # -------------------- CANAIS META --------------------
+
+    async def criar_canal_meta(self, guild_id: int, canal_id: int, user_id: int):
+        """Registra o canal de meta criado para um usuário."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT OR REPLACE INTO canais_meta (canal_id, guild_id, user_id, data_criacao, ativo)
+                    VALUES (?, ?, ?, ?, 1)
+                ''', (int(canal_id), int(guild_id), int(user_id), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao registrar canal de meta: {e}")
+            traceback.print_exc()
+            return False
+
+    async def fechar_canal_meta(self, canal_id: int):
+        """Marca um canal de meta como fechado."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE canais_meta
+                    SET ativo = 0
+                    WHERE canal_id = ?
+                ''', (int(canal_id),))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao fechar canal de meta: {e}")
+            traceback.print_exc()
+            return False
+
+    async def registrar_meta_aprovada(self, guild_id: int, user_id: int, aprovado_por_id: int, descricao: str):
+        """Registra uma meta aprovada."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO metas_aprovadas (guild_id, user_id, aprovado_por_id, descricao, data_aprovacao)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (int(guild_id), int(user_id), int(aprovado_por_id), str(descricao), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao registrar meta aprovada: {e}")
+            traceback.print_exc()
+            return False
 
     # -------------------- PREÇOS (VENDAS) --------------------
 
@@ -772,6 +885,75 @@ class Database:
             traceback.print_exc()
             return []
 
+    # -------------------- REGISTROS PENDENTES --------------------
+
+    async def criar_registro_pendente(self, message_id: int, guild_id: int, user_id: int, nome: str, rg: str):
+        """Salva (ou atualiza) um registro pendente ligado a uma mensagem."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT OR REPLACE INTO registros_pendentes
+                    (message_id, guild_id, user_id, nome, rg, status, criado_em, resolvido_em, resolvido_por_id, resultado)
+                    VALUES (?, ?, ?, ?, ?, 'pendente', ?, NULL, NULL, NULL)
+                ''', (int(message_id), int(guild_id), int(user_id), str(nome), str(rg), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao criar registro pendente: {e}")
+            traceback.print_exc()
+            return False
+
+    async def obter_registro_pendente_por_mensagem(self, message_id: int):
+        """Retorna (message_id, guild_id, user_id, nome, rg, status) se existir."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT message_id, guild_id, user_id, nome, rg, status
+                    FROM registros_pendentes
+                    WHERE message_id = ?
+                ''', (int(message_id),)) as cursor:
+                    return await cursor.fetchone()
+        except Exception as e:
+            print(f"❌ Erro ao obter registro pendente: {e}")
+            traceback.print_exc()
+            return None
+
+    async def listar_registros_pendentes(self):
+        """Retorna lista de (message_id, guild_id, user_id, nome, rg) ainda pendentes."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT message_id, guild_id, user_id, nome, rg
+                    FROM registros_pendentes
+                    WHERE status = 'pendente'
+                ''') as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao listar registros pendentes: {e}")
+            traceback.print_exc()
+            return []
+
+    async def resolver_registro_pendente(self, message_id: int, resolvido_por_id: int, resultado: str):
+        """Marca um registro como resolvido (aprovado/negado)."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                cursor = await db.execute('''
+                    UPDATE registros_pendentes
+                    SET status = 'resolvido',
+                        resolvido_em = ?,
+                        resolvido_por_id = ?,
+                        resultado = ?
+                    WHERE message_id = ? AND status = 'pendente'
+                ''', (now, int(resolvido_por_id), str(resultado), int(message_id)))
+                await db.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"❌ Erro ao resolver registro pendente: {e}")
+            traceback.print_exc()
+            return False
+
     async def limpar_dados_servidor(self, guild_id: int):
         try:
             async with aiosqlite.connect(self.db_name) as db:
@@ -783,6 +965,7 @@ class Database:
                 await db.execute('DELETE FROM movimentos_banco WHERE guild_id = ?', (int(guild_id),))
                 await db.execute('DELETE FROM estoque_produtos WHERE guild_id = ?', (int(guild_id),))
                 await db.execute('DELETE FROM config_servidores WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM registros_pendentes WHERE guild_id = ?', (int(guild_id),))
                 await db.commit()
                 return True
         except Exception as e:

@@ -13,7 +13,7 @@ class ConfigView(ui.LayoutView):
         container = ui.Container()
         container.add_item(ui.TextDisplay("# ⚙️ Configuração do Bot"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay("Selecione canais e cargos abaixo (sem precisar ID)."))
+        container.add_item(ui.TextDisplay("Selecione canais e cargos abaixo."))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         # Canal de logs (fabricação/vendas/encomendas/banco)
@@ -48,7 +48,7 @@ class ConfigView(ui.LayoutView):
         self.sel_cargo_gerente.callback = self._set_cargo_gerente
         container.add_item(ui.ActionRow(self.sel_cargo_gerente))
 
-        # Cargo meta paga (já existia)
+        # Cargo meta paga
         self.sel_cargo_meta = ui.RoleSelect(
             placeholder="✅ Selecionar cargo de meta paga",
             min_values=1,
@@ -66,7 +66,6 @@ class ConfigView(ui.LayoutView):
         self.sel_cargo_vendedor.callback = self._set_cargo_vendedor
         container.add_item(ui.ActionRow(self.sel_cargo_vendedor))
 
-        # Novo: cargo fabricante
         self.sel_cargo_fabricante = ui.RoleSelect(
             placeholder="🏭 Selecionar cargo de fabricante",
             min_values=1,
@@ -75,7 +74,23 @@ class ConfigView(ui.LayoutView):
         self.sel_cargo_fabricante.callback = self._set_cargo_fabricante
         container.add_item(ui.ActionRow(self.sel_cargo_fabricante))
 
-        container.accent_color = discord.Colour.blurple()
+        # Cargos boas-vindas
+        self.sel_cargo_membro = ui.RoleSelect(
+            placeholder="👤 Selecionar cargo de membro",
+            min_values=1,
+            max_values=1
+        )
+        self.sel_cargo_membro.callback = self._set_cargo_membro
+        container.add_item(ui.ActionRow(self.sel_cargo_membro))
+
+        self.sel_cargo_morador = ui.RoleSelect(
+            placeholder="🏠 Selecionar cargo de morador",
+            min_values=1,
+            max_values=1
+        )
+        self.sel_cargo_morador.callback = self._set_cargo_morador
+        container.add_item(ui.ActionRow(self.sel_cargo_morador))
+
         self.add_item(container)
 
     async def _set_canal_logs(self, interaction: discord.Interaction):
@@ -156,6 +171,31 @@ class ConfigView(ui.LayoutView):
             traceback.print_exc()
             await interaction.response.send_message("❌ Erro ao configurar cargo fabricante.", ephemeral=True)
 
+    async def _set_cargo_membro(self, interaction: discord.Interaction):
+        try:
+            cargo = self.sel_cargo_membro.values[0]
+            ok = await self.db.set_cargos_boasvindas(interaction.guild.id, cargo_membro_id=cargo.id)
+            await interaction.response.send_message(
+                "✅ Cargo de membro atualizado!" if ok else "❌ Erro ao salvar cargo de membro.",
+                ephemeral=True
+            )
+        except Exception as e:
+            print(f"Erro config cargo membro: {e}")
+            traceback.print_exc()
+            await interaction.response.send_message("❌ Erro ao configurar cargo de membro.", ephemeral=True)
+
+    async def _set_cargo_morador(self, interaction: discord.Interaction):
+        try:
+            cargo = self.sel_cargo_morador.values[0]
+            ok = await self.db.set_cargos_boasvindas(interaction.guild.id, cargo_morador_id=cargo.id)
+            await interaction.response.send_message(
+                "✅ Cargo de morador atualizado!" if ok else "❌ Erro ao salvar cargo de morador.",
+                ephemeral=True
+            )
+        except Exception as e:
+            print(f"Erro config cargo morador: {e}")
+            traceback.print_exc()
+            await interaction.response.send_message("❌ Erro ao configurar cargo de morador.", ephemeral=True)
 
 class ConfigCog(commands.Cog):
     def __init__(self, bot):

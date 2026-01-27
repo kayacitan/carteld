@@ -1,15 +1,14 @@
-import discord
+﻿import discord
 from discord import ui, app_commands
 from discord.ext import commands
 import traceback
-
-# --- CONFIGURAÇÕES IMPORTANTES ---
-CARGO_NOVO_ID = 1366172238449082500  # ID do cargo que o membro vai ganhar
-CANAL_LOGS_ID = 1366148719967211612  # ID do canal onde as solicitações serão enviadas
+from database import Database
 
 # --- O MODAL DE PREENCHIMENTO ---
 class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
-    # Campo para o nome (até 10 letras)
+    def __init__(self, db: Database):
+        super().__init__()
+        self.db = db
     nome = ui.TextInput(
         label='Nome (até 10 letras)',
         placeholder='Digite seu nome...',
@@ -32,7 +31,7 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
             # Validação: Verifica se o nome contém apenas letras
             if not self.nome.value.isalpha():
                 await interaction.response.send_message(
-                    "❌ O nome deve conter apenas letras!", 
+                    "O nome deve conter apenas letras!", 
                     ephemeral=True
                 )
                 return
@@ -40,52 +39,69 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
             # Validação: Verifica se o RG contém apenas números
             if not self.rg.value.isdigit():
                 await interaction.response.send_message(
-                    "❌ O RG deve conter apenas números!", 
+                    "O RG deve conter apenas números!", 
                     ephemeral=True
                 )
                 return
             
             # Busca o canal de logs
-            canal_logs = interaction.guild.get_channel(CANAL_LOGS_ID)
+            canal_log_id = await self.db.get_canal_log(interaction.guild.id)
+            if not canal_log_id:
+                await interaction.response.send_message(
+                    " Canal de logs não configurado! Use `/config` para configurar.",
+                    ephemeral=True
+                )
+                return
+
+            canal_logs = interaction.guild.get_channel(canal_log_id)
             
             if canal_logs is None:
                 await interaction.response.send_message(
-                    "⚠️ Erro: Canal de logs não encontrado! Avise um administrador.", 
+                    "Erro: Canal de logs não encontrado! Avise um administrador.", 
                     ephemeral=True
                 )
                 return
             
-            # Cria a view de aprovação com custom_id para persistência
             view_aprovacao = AprovacaoView(
+                db=self.db,
                 user_id=interaction.user.id,
                 nome=self.nome.value,
                 rg=self.rg.value
             )
             
-            # Cria o embed com as informações do registro
             embed = discord.Embed(
-                title="📝 Nova Solicitação de Registro",
+                title="Nova Solicitação de Registro",
                 color=discord.Color.yellow(),
                 timestamp=discord.utils.utcnow()
             )
-            embed.add_field(name="👤 Usuário", value=interaction.user.mention, inline=True)
-            embed.add_field(name="📛 Nome Informado", value=self.nome.value, inline=True)
-            embed.add_field(name="🆔 RG", value=self.rg.value, inline=True)
+            embed.add_field(name="Usuário", value=interaction.user.mention, inline=True)
+            embed.add_field(name="Nome Informado", value=self.nome.value, inline=True)
+            embed.add_field(name="RG", value=self.rg.value, inline=True)
             embed.set_thumbnail(url=interaction.user.display_avatar.url)
             embed.set_footer(text=f"ID do Usuário: {interaction.user.id}")
             
             # Envia para o canal de logs
-            await canal_logs.send(embed=embed, view=view_aprovacao)
+            mensagem = await canal_logs.send(embed=embed, view=view_aprovacao)
+            view_aprovacao.message_id = mensagem.id
+
+            # Persiste o registro para que os botões sobrevivam a reinícios
+            await self.db.criar_registro_pendente(
+                message_id=mensagem.id,
+                guild_id=interaction.guild.id,
+                user_id=interaction.user.id,
+                nome=self.nome.value,
+                rg=self.rg.value,
+            )
             
             # Confirma para o usuário
             await interaction.response.send_message(
-                "✅ Sua solicitação foi enviada para análise! Aguarde a aprovação dos administradores.",
+                "Sua solicitação foi enviada para análise Aguarde a aprovação dos administradores.",
                 ephemeral=True
             )
             
         except discord.Forbidden:
             await interaction.response.send_message(
-                "⚠️ Não tenho permissão para enviar mensagens no canal de logs!",
+                "Não tenho permissão para enviar mensagens no canal de logs!",
                 ephemeral=True
             )
         except Exception as e:
@@ -93,7 +109,7 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    f"❌ Ocorreu um erro ao processar seu registro. Tente novamente ou contate um administrador.",
+                    f"Ocorreu um erro ao processar seu registro. Tente novamente ou contate um administrador.",
                     ephemeral=True
                 )
             except:
@@ -104,54 +120,76 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
         traceback.print_exc()
         try:
             await interaction.response.send_message(
-                "❌ Ocorreu um erro ao processar o formulário. Tente novamente.",
+                "Ocorreu um erro ao processar o formulário. Tente novamente.",
                 ephemeral=True
             )
         except:
             pass
 
-# --- VIEW DE APROVAÇÃO (PARA ADMINS) ---
+# --- VIEW DE APROVACAO (PARA ADMINS) ---
 class AprovacaoView(ui.View):
-    def __init__(self, user_id: int, nome: str, rg: str):
+    def __init__(self, db: Database, user_id: int, nome: str, rg: str, message_id: int = None):
         super().__init__(timeout=None)  # Não expira
+        self.db = db
         self.user_id = user_id
         self.nome = nome
         self.rg = rg
-    
+        self.message_id = message_id
+
     @ui.button(label="✅ Aprovar", style=discord.ButtonStyle.success, custom_id="aprovar_registro")
     async def aprovar(self, interaction: discord.Interaction, button: ui.Button):
         try:
+            message_id = interaction.message.id
+
+            # Reidrata dados do registro caso o bot tenha reiniciado
+            if (not self.user_id) or (self.user_id == 0) or (self.message_id and self.message_id != message_id):
+                registro = await self.db.obter_registro_pendente_por_mensagem(message_id)
+                if not registro or registro[5] != 'pendente':
+                    await interaction.response.send_message(
+                        "Este registro não está mais pendente.",
+                        ephemeral=True
+                    )
+                    return
+                _, _, self.user_id, self.nome, self.rg, _ = registro
+                self.message_id = message_id
+
             # Verifica se quem clicou é admin
             if not interaction.user.guild_permissions.administrator:
                 await interaction.response.send_message(
-                    "❌ Você não tem permissão para aprovar registros!", 
+                    "Você não tem permissão para aprovar registros!", 
                     ephemeral=True
                 )
                 return
             
-            # Busca o usuário
             user = interaction.guild.get_member(self.user_id)
             if user is None:
                 await interaction.response.send_message(
-                    "⚠️ Erro: Usuário não encontrado no servidor! Ele pode ter saído.",
+                    "Erro: Usuário não encontrado no servidor! Ele pode ter saído.",
                     ephemeral=True
                 )
                 return
             
             # Busca o cargo
-            cargo = interaction.guild.get_role(CARGO_NOVO_ID)
+            cargo_membro_id, _ = await self.db.get_cargos_boasvindas(interaction.guild.id)
+            if not cargo_membro_id:
+                await interaction.response.send_message(
+                    "Cargo de membro não configurado! Use `/config`.",
+                    ephemeral=True
+                )
+                return
+
+            cargo = interaction.guild.get_role(int(cargo_membro_id))
             
             if cargo is None:
                 await interaction.response.send_message(
-                    "⚠️ Erro: Cargo não encontrado! Verifique o ID configurado no código.",
+                    "Erro: Cargo não encontrado! Verifique o ID configurado no código.",
                     ephemeral=True
                 )
                 return
             
-            # Verifica se o usuário já tem o cargo
             if cargo in user.roles:
                 await interaction.response.send_message(
-                    "⚠️ Este usuário já possui o cargo de membro!",
+                    "Este usuário já possui o cargo de membro!",
                     ephemeral=True
                 )
                 return
@@ -167,7 +205,7 @@ class AprovacaoView(ui.View):
             embed.color = discord.Color.green()
             embed.title = "✅ Registro Aprovado"
             embed.add_field(
-                name="📋 Aprovado por", 
+                name="Aprovado por", 
                 value=interaction.user.mention, 
                 inline=False
             )
@@ -178,6 +216,13 @@ class AprovacaoView(ui.View):
                 item.disabled = True
             
             await interaction.response.edit_message(embed=embed, view=self)
+
+            # Marca como resolvido no banco (persistência)
+            await self.db.resolver_registro_pendente(
+                message_id=message_id,
+                resolvido_por_id=interaction.user.id,
+                resultado="aprovado",
+            )
             
             # Notifica o usuário
             try:
@@ -192,37 +237,51 @@ class AprovacaoView(ui.View):
                     
         except discord.Forbidden:
             await interaction.response.send_message(
-                "⚠️ Não tenho permissão para modificar este usuário! Verifique a hierarquia de cargos.",
+                "Não tenho permissão para modificar este usuário! Verifique a hierarquia de cargos.",
                 ephemeral=True
             )
         except Exception as e:
             print(f"Erro ao aprovar registro: {e}")
             traceback.print_exc()
             await interaction.response.send_message(
-                f"❌ Erro ao aprovar registro: {str(e)}",
+                f"Erro ao aprovar registro: {str(e)}",
                 ephemeral=True
             )
     
-    @ui.button(label="❌ Negar", style=discord.ButtonStyle.danger, custom_id="negar_registro")
+    @ui.button(label="Negar", style=discord.ButtonStyle.danger, custom_id="negar_registro")
     async def negar(self, interaction: discord.Interaction, button: ui.Button):
         try:
+            message_id = interaction.message.id
+
+            # Reidrata dados do registro caso o bot tenha reiniciado
+            if (not self.user_id) or (self.user_id == 0) or (self.message_id and self.message_id != message_id):
+                registro = await self.db.obter_registro_pendente_por_mensagem(message_id)
+                if not registro or registro[5] != 'pendente':
+                    await interaction.response.send_message(
+                        "⚠️ Este registro não está mais pendente.",
+                        ephemeral=True
+                    )
+                    return
+                _, _, self.user_id, self.nome, self.rg, _ = registro
+                self.message_id = message_id
+
             # Verifica se quem clicou é admin
             if not interaction.user.guild_permissions.administrator:
                 await interaction.response.send_message(
-                    "❌ Você não tem permissão para negar registros!", 
+                    "Você não tem permissão para negar registros!", 
                     ephemeral=True
                 )
                 return
-            
+
             # Busca o usuário
             user = interaction.guild.get_member(self.user_id)
             
             # Atualiza o embed
             embed = interaction.message.embeds[0]
             embed.color = discord.Color.red()
-            embed.title = "❌ Registro Negado"
+            embed.title = "Registro Negado"
             embed.add_field(
-                name="📋 Negado por", 
+                name="Negado por", 
                 value=interaction.user.mention, 
                 inline=False
             )
@@ -233,12 +292,18 @@ class AprovacaoView(ui.View):
                 item.disabled = True
             
             await interaction.response.edit_message(embed=embed, view=self)
+
+            # Marca como resolvido no banco (persistência)
+            await self.db.resolver_registro_pendente(
+                message_id=message_id,
+                resolvido_por_id=interaction.user.id,
+                resultado="negado",
+            )
             
-            # Notifica o usuário se ele ainda estiver no servidor
             if user:
                 try:
                     await user.send(
-                        f"😔 Infelizmente seu registro foi negado por {interaction.user.mention}.\n"
+                        f"Infelizmente seu registro foi negado por {interaction.user.mention}.\n"
                         f"Entre em contato com a administração para mais informações."
                     )
                 except discord.Forbidden:
@@ -250,28 +315,32 @@ class AprovacaoView(ui.View):
             print(f"Erro ao negar registro: {e}")
             traceback.print_exc()
             await interaction.response.send_message(
-                f"❌ Erro ao negar registro: {str(e)}",
+                f"Erro ao negar registro: {str(e)}",
                 ephemeral=True
             )
 
 
 # --- VIEW DO PAINEL DE REGISTRO COM LAYOUTVIEW ---
 class RegistroView(ui.LayoutView):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db: Database):
+        super().__init__(timeout=None)
+        self.db = db
         
         # Container
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# 📋 Registro Oficial'))
+        container.add_item(ui.TextDisplay('# Registro Oficial'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay('Clique no botão abaixo para iniciar seu registro!'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.accent_color = discord.Colour.green()
+        galeria_registro = ui.MediaGallery()
+        galeria_registro.add_item(media='https://media.discordapp.net/attachments/1366148719967211612/1465503657452765286/Cartel.png?ex=69795823&is=697806a3&hm=6d37d5b02ab93b40bb31234a9b2518a68222014a0eb9472be730b8b1c5990561&=&format=webp&quality=lossless')
+        container.add_item(galeria_registro)
         
         # ✅ BOTÃO DENTRO DE ACTIONROW DENTRO DO CONTAINER
         botao_registrar = ui.Button(
             label="Novo Membro",
-            style=discord.ButtonStyle.secondary
+            style=discord.ButtonStyle.secondary,
+            custom_id='registro_novo_membro'
         )
         botao_registrar.callback = self.abrir_modal
         
@@ -284,7 +353,8 @@ class RegistroView(ui.LayoutView):
     async def abrir_modal(self, interaction: discord.Interaction):
         try:
             # Verifica se já tem o cargo (segurança)
-            cargo = interaction.guild.get_role(CARGO_NOVO_ID)
+            cargo_membro_id, _ = await self.db.get_cargos_boasvindas(interaction.guild.id)
+            cargo = interaction.guild.get_role(int(cargo_membro_id)) if cargo_membro_id else None
             if cargo and cargo in interaction.user.roles:
                 await interaction.response.send_message(
                     "Ei, você já está registrado! 😎", 
@@ -293,7 +363,7 @@ class RegistroView(ui.LayoutView):
                 return
             
             # Abre o modal para preencher dados
-            modal = ModalRegistro()
+            modal = ModalRegistro(self.db)
             await interaction.response.send_modal(modal)
             
         except Exception as e:
@@ -301,7 +371,7 @@ class RegistroView(ui.LayoutView):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "❌ Ocorreu um erro ao abrir o formulário. Tente novamente.",
+                    "Ocorreu um erro ao abrir o formulário. Tente novamente.",
                     ephemeral=True
                 )
             except:
@@ -312,23 +382,33 @@ class RegistroView(ui.LayoutView):
 class RegistroCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Adiciona a view de aprovação persistente
-        self.bot.add_view(AprovacaoView(user_id=0, nome="", rg=""))
-        print("✅ Cog de Registro carregado com sucesso!")
+        self.db = Database()
+        self.bot.add_view(RegistroView(self.db))
+        print("Cog de Registro carregado com sucesso!")
+
+    async def cog_load(self):
+        # Garante que o banco esteja pronto e re-registra aprovações pendentes
+        await self.db.init_db()
+        pendentes = await self.db.listar_registros_pendentes()
+        for message_id, _guild_id, user_id, nome, rg in pendentes:
+            view = AprovacaoView(self.db, user_id=user_id, nome=nome, rg=rg, message_id=message_id)
+            self.bot.add_view(view, message_id=message_id)
+        if pendentes:
+            print(f"Views de aprovação reidratadas: {len(pendentes)} pendente(s).")
 
     @app_commands.command(name='registro', description='Envia o painel de registro')
     @app_commands.checks.has_permissions(administrator=True)
     async def enviar_registro(self, interaction: discord.Interaction):
         try:
-            view = RegistroView()
+            view = RegistroView(self.db)
             await interaction.response.send_message(view=view)
-            print(f"✅ Painel de registro enviado por {interaction.user}")
+            print(f"Painel de registro enviado por {interaction.user}")
             
         except Exception as e:
             print(f"Erro ao enviar painel de registro: {e}")
             traceback.print_exc()
             await interaction.response.send_message(
-                "❌ Erro ao enviar o painel de registro. Verifique as permissões do bot.",
+                "Erro ao enviar o painel de registro. Verifique as permissões do bot.",
                 ephemeral=True
             )
     
@@ -336,7 +416,7 @@ class RegistroCog(commands.Cog):
     async def enviar_registro_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         if isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message(
-                "❌ Você não tem permissão para usar este comando! Apenas administradores podem criar painéis de registro.",
+                "Você não tem permissão para usar este comando! Apenas administradores podem criar painéis de registro.",
                 ephemeral=True
             )
         else:
@@ -344,7 +424,7 @@ class RegistroCog(commands.Cog):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "❌ Ocorreu um erro ao executar o comando.",
+                    "Ocorreu um erro ao executar o comando.",
                     ephemeral=True
                 )
             except:
@@ -353,7 +433,7 @@ class RegistroCog(commands.Cog):
 async def setup(bot):
     try:
         await bot.add_cog(RegistroCog(bot))
-        print("✅ RegistroCog adicionado com sucesso!")
+        print("RegistroCog adicionado com sucesso!")
     except Exception as e:
-        print(f"❌ Erro ao carregar RegistroCog: {e}")
+        print(f"Erro ao carregar RegistroCog: {e}")
         traceback.print_exc()

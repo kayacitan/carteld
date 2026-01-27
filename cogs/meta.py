@@ -19,18 +19,22 @@ class MetaView(ui.LayoutView):
             'Mande uma foto da meta entregue e em qual baú ou para quem foi mandado'
         ))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.accent_color = discord.Colour.blue()
+        
         
         # Botão para registrar meta
         botao_registrar = ui.Button(
             label="Registrar Meta",
-            style=discord.ButtonStyle.primary
+            style=discord.ButtonStyle.secondary
         )
         botao_registrar.callback = self.registrar_meta
         
+        galeria_meta = ui.MediaGallery()
+        galeria_meta.add_item(media='https://media.discordapp.net/attachments/1366148719967211612/1465503657452765286/Cartel.png?ex=69795823&is=697806a3&hm=6d37d5b02ab93b40bb31234a9b2518a68222014a0eb9472be730b8b1c5990561&=&format=webp&quality=lossless')
+        container.add_item(galeria_meta)
+
         linha = ui.ActionRow(botao_registrar)
         container.add_item(linha)
-        
+
         self.add_item(container)
     
     async def registrar_meta(self, interaction: discord.Interaction):
@@ -138,7 +142,6 @@ class MetaView(ui.LayoutView):
                 f'**Gerentes:** {cargo_gerente.mention}\n'
                 f'Vocês serão notificados quando a meta for enviada.'
             ))
-            container_boas_vindas.accent_color = discord.Colour.green()
             
             view_boas_vindas = ui.LayoutView()
             view_boas_vindas.add_item(container_boas_vindas)
@@ -189,7 +192,6 @@ class AvaliacaoMetaView(ui.LayoutView):
             '• ✅ Aprovar - Dá o cargo e envia para o log\n'
             '• ❌ Reprovar - Fecha o canal sem dar o cargo'
         ))
-        container.accent_color = discord.Colour.orange()
         
         # Botões
         botao_aprovar = ui.Button(
@@ -269,7 +271,6 @@ class AvaliacaoMetaView(ui.LayoutView):
                     if self.mensagem_meta.content:
                         container_log.add_item(ui.TextDisplay(f"**📝 Descrição:**\n{self.mensagem_meta.content}"))
                     
-                    container_log.accent_color = discord.Colour.green()
                     
                     view_log = ui.LayoutView()
                     view_log.add_item(container_log)
