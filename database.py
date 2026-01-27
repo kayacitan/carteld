@@ -1,4 +1,4 @@
-import aiosqlite
+﻿import aiosqlite
 from datetime import datetime
 import traceback
 
@@ -184,6 +184,22 @@ class Database:
                         aprovado_por_id INTEGER NOT NULL,
                         descricao TEXT,
                         data_aprovacao TEXT NOT NULL
+                    )
+                ''')
+
+                # --- Registros pendentes (aprovacao persistente) ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS registros_pendentes (
+                        message_id INTEGER PRIMARY KEY,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        nome TEXT NOT NULL,
+                        rg TEXT NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'pendente',
+                        criado_em TEXT NOT NULL,
+                        resolvido_em TEXT,
+                        resolvido_por_id INTEGER,
+                        resultado TEXT
                     )
                 ''')
 
@@ -869,6 +885,75 @@ class Database:
             traceback.print_exc()
             return []
 
+    # -------------------- REGISTROS PENDENTES --------------------
+
+    async def criar_registro_pendente(self, message_id: int, guild_id: int, user_id: int, nome: str, rg: str):
+        """Salva (ou atualiza) um registro pendente ligado a uma mensagem."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT OR REPLACE INTO registros_pendentes
+                    (message_id, guild_id, user_id, nome, rg, status, criado_em, resolvido_em, resolvido_por_id, resultado)
+                    VALUES (?, ?, ?, ?, ?, 'pendente', ?, NULL, NULL, NULL)
+                ''', (int(message_id), int(guild_id), int(user_id), str(nome), str(rg), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao criar registro pendente: {e}")
+            traceback.print_exc()
+            return False
+
+    async def obter_registro_pendente_por_mensagem(self, message_id: int):
+        """Retorna (message_id, guild_id, user_id, nome, rg, status) se existir."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT message_id, guild_id, user_id, nome, rg, status
+                    FROM registros_pendentes
+                    WHERE message_id = ?
+                ''', (int(message_id),)) as cursor:
+                    return await cursor.fetchone()
+        except Exception as e:
+            print(f"❌ Erro ao obter registro pendente: {e}")
+            traceback.print_exc()
+            return None
+
+    async def listar_registros_pendentes(self):
+        """Retorna lista de (message_id, guild_id, user_id, nome, rg) ainda pendentes."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT message_id, guild_id, user_id, nome, rg
+                    FROM registros_pendentes
+                    WHERE status = 'pendente'
+                ''') as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao listar registros pendentes: {e}")
+            traceback.print_exc()
+            return []
+
+    async def resolver_registro_pendente(self, message_id: int, resolvido_por_id: int, resultado: str):
+        """Marca um registro como resolvido (aprovado/negado)."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                cursor = await db.execute('''
+                    UPDATE registros_pendentes
+                    SET status = 'resolvido',
+                        resolvido_em = ?,
+                        resolvido_por_id = ?,
+                        resultado = ?
+                    WHERE message_id = ? AND status = 'pendente'
+                ''', (now, int(resolvido_por_id), str(resultado), int(message_id)))
+                await db.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"❌ Erro ao resolver registro pendente: {e}")
+            traceback.print_exc()
+            return False
+
     async def limpar_dados_servidor(self, guild_id: int):
         try:
             async with aiosqlite.connect(self.db_name) as db:
@@ -880,6 +965,7 @@ class Database:
                 await db.execute('DELETE FROM movimentos_banco WHERE guild_id = ?', (int(guild_id),))
                 await db.execute('DELETE FROM estoque_produtos WHERE guild_id = ?', (int(guild_id),))
                 await db.execute('DELETE FROM config_servidores WHERE guild_id = ?', (int(guild_id),))
+                await db.execute('DELETE FROM registros_pendentes WHERE guild_id = ?', (int(guild_id),))
                 await db.commit()
                 return True
         except Exception as e:
