@@ -30,7 +30,7 @@ class Welcome(ui.LayoutView):
             cargo_membro_id, _ = await self.db.get_cargos_boasvindas(interaction.guild.id)
             if not cargo_membro_id:
                 await interaction.response.send_message(
-                    'Cargo de membro nÃ£o configurado. Use /config para definir.',
+                    'Cargo de membro não configurado. Use /config para definir.',
                     ephemeral=True
                 )
                 return
@@ -38,15 +38,15 @@ class Welcome(ui.LayoutView):
             cargo = interaction.guild.get_role(int(cargo_membro_id))
 
             if cargo is None:
-                await interaction.response.send_message('Cargo nÃ£o encontrado', ephemeral=True)
+                await interaction.response.send_message('Cargo não encontrado', ephemeral=True)
                 return
 
             if cargo in interaction.user.roles:
-                await interaction.response.send_message('VocÃª jÃ¡ possui esse cargo', ephemeral=True)
+                await interaction.response.send_message('Você já possui esse cargo', ephemeral=True)
                 return
 
             await interaction.user.add_roles(cargo)
-            await interaction.response.send_message('Bem vindo! Agora vocÃª pode acessar os canais.', ephemeral=True)
+            await interaction.response.send_message('Bem vindo! Agora você pode acessar os canais.', ephemeral=True)
         except Exception as e:
             print(f"Erro no boas-vindas: {e}")
             traceback.print_exc()
@@ -67,7 +67,7 @@ class BoasVindasCog(commands.Cog):
     @painel.error
     async def painel_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         if isinstance(error, app_commands.MissingPermissions):
-            await interaction.response.send_message('VocÃª nÃ£o tem permissÃ£o para usar este comando!', ephemeral=True)
+            await interaction.response.send_message('Você não tem permissão para usar este comando!', ephemeral=True)
 
 
 async def setup(bot: commands.Bot):

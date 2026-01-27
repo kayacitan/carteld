@@ -118,7 +118,7 @@ class QuantidadeModal(ui.Modal, title='📦 Quantidade de Fabricação'):
             pass
 
 
-# --- VIEW DE CONFIRMAÇÃO ---
+# --- VIEW DE CONFIRMACAO ---
 class ConfirmacaoView(ui.LayoutView):
     def __init__(self, produto_id: str, produto: dict, quantidade: int, custo_total: float, materiais: str, db: Database):
         super().__init__()
@@ -287,7 +287,7 @@ class ConfirmacaoView(ui.LayoutView):
             traceback.print_exc()
 
 
-# --- LAYOUTVIEW PARA LOG DE FABRICAÇÃO ---
+# --- LAYOUTVIEW PARA LOG DE FABRICACAO ---
 class LogFabricacaoView(ui.LayoutView):
     def __init__(self, usuario: discord.Member, produto: dict, quantidade: int, custo_total: float, materiais: str, saldo_atual=None):
         super().__init__()
@@ -319,7 +319,7 @@ class LogFabricacaoView(ui.LayoutView):
         self.add_item(container)
 
 
-# --- VIEW PRINCIPAL DE FABRICAÇÃO ---
+# --- VIEW PRINCIPAL DE FABRICACAO ---
 class FabricacaoView(ui.LayoutView):
     def __init__(self, db: Database):
         super().__init__()
