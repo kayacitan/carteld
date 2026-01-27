@@ -29,7 +29,6 @@ class EstoqueView(ui.LayoutView):
             ))
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        container.accent_color = discord.Colour.gold()
         self.add_item(container)
 
 

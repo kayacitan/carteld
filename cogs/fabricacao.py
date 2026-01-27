@@ -133,25 +133,24 @@ class ConfirmacaoView(ui.LayoutView):
         # Criar container de confirmação
         container = ui.Container()
         container.add_item(ui.TextDisplay('# 📋 Confirmação de Fabricação'))
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Informações do produto
         container.add_item(ui.TextDisplay(f"**📦 Produto:** {self.produto['nome']}"))
         container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {self.quantidade} unidade(s)"))
 
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Custo total
         custo_formatado = f"R$ {self.custo_total:,.2f}".replace(',', '.')
         container.add_item(ui.TextDisplay(f"**💰 Custo Total:** {custo_formatado}"))
 
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Materiais necessários
         container.add_item(ui.TextDisplay(f"**📦 Materiais Necessários:**\n{self.materiais}"))
 
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.accent_color = discord.Colour.blue()
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Botões de confirmação
         botao_confirmar = ui.Button(
@@ -301,7 +300,7 @@ class LogFabricacaoView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f"**📦 Produto:** {produto['nome']}"))
         container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {quantidade} unidade(s)"))
 
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         custo_formatado = f"R$ {custo_total:,.2f}".replace(',', '.')
         container.add_item(ui.TextDisplay(f"**💰 Custo Total:** {custo_formatado}"))
@@ -310,14 +309,13 @@ class LogFabricacaoView(ui.LayoutView):
             saldo_formatado = f"R$ {float(saldo_atual):,.2f}".replace(',', '.')
             container.add_item(ui.TextDisplay(f"**💼 Saldo em caixa:** {saldo_formatado}"))
 
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f"**📦 Materiais Utilizados:**\n{materiais}"))
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         data_hora = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
         container.add_item(ui.TextDisplay(f"**🕒 Data e Hora:** {data_hora}"))
 
-        container.accent_color = discord.Colour.green()
         self.add_item(container)
 
 
@@ -328,22 +326,25 @@ class FabricacaoView(ui.LayoutView):
         self.db = db
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# 🏭 Sistema de Fabricação'))
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.TextDisplay('# 🏭 Registro de Fabricação'))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay('Selecione o produto que deseja fabricar abaixo:'))
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         for produto_id, info in PRODUTOS.items():
             materiais_texto = "\n".join([f"• {mat}: {qtd}" for mat, qtd in info['materiais'].items()])
-            produto_info = (
-                f"**{info['emoji']} {info['nome']}**\n"
+            container.add_item(ui.TextDisplay(f"**{info['emoji']} {info['nome']}**"))
+            receita_info = (
                 f"💰 Custo: R$ {info['custo']:,.2f}".replace(',', '.') + "\n"
                 f"📋 Materiais:\n{materiais_texto}"
             )
-            container.add_item(ui.TextDisplay(produto_info))
-            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+            container.add_item(ui.TextDisplay(receita_info))
+            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-        container.accent_color = discord.Colour.gold()
+
+        galeria_fabricacao = ui.MediaGallery()
+        galeria_fabricacao.add_item(media='https://media.discordapp.net/attachments/1366148719967211612/1465503657452765286/Cartel.png?ex=69795823&is=697806a3&hm=6d37d5b02ab93b40bb31234a9b2518a68222014a0eb9472be730b8b1c5990561&=&format=webp&quality=lossless')
+        container.add_item(galeria_fabricacao)
 
         select = ui.Select(
             placeholder="Selecione o produto para fabricar...",

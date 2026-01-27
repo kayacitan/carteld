@@ -21,12 +21,14 @@ class Database:
                         canal_log_meta_id INTEGER,
                         cargo_vendedor_id INTEGER,
                         cargo_fabricante_id INTEGER,
+                        cargo_membro_id INTEGER,
+                        cargo_morador_id INTEGER,
                         data_configuracao TEXT
                     )
                 ''')
 
                 # Garantir colunas novas caso o banco já exista
-                for col in ["cargo_vendedor_id", "cargo_fabricante_id"]:
+                for col in ["cargo_vendedor_id", "cargo_fabricante_id", "cargo_membro_id", "cargo_morador_id"]:
                     try:
                         await db.execute(f"ALTER TABLE config_servidores ADD COLUMN {col} INTEGER")
                     except Exception:
@@ -200,7 +202,7 @@ class Database:
             async with aiosqlite.connect(self.db_name) as db:
                 async with db.execute('''
                     SELECT guild_id, canal_log_id, cargo_gerente_id, cargo_meta_paga_id, canal_log_meta_id,
-                           cargo_vendedor_id, cargo_fabricante_id, data_configuracao
+                           cargo_vendedor_id, cargo_fabricante_id, cargo_membro_id, cargo_morador_id, data_configuracao
                     FROM config_servidores
                     WHERE guild_id = ?
                 ''', (int(guild_id),)) as cursor:
@@ -288,6 +290,51 @@ class Database:
             traceback.print_exc()
             return None, None, None
 
+    async def set_cargos_boasvindas(self, guild_id: int, cargo_membro_id: int = None, cargo_morador_id: int = None):
+        """Define cargos de boas-vindas (membro/morador) sem mexer nos outros."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT cargo_membro_id, cargo_morador_id
+                    FROM config_servidores WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    row = await cursor.fetchone()
+
+                atual_m, atual_r = (row[0], row[1]) if row else (None, None)
+                novo_m = cargo_membro_id if cargo_membro_id is not None else atual_m
+                novo_r = cargo_morador_id if cargo_morador_id is not None else atual_r
+
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO config_servidores (guild_id, cargo_membro_id, cargo_morador_id, data_configuracao)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(guild_id)
+                    DO UPDATE SET cargo_membro_id = ?, cargo_morador_id = ?, data_configuracao = ?
+                ''', (int(guild_id), novo_m, novo_r, now, novo_m, novo_r, now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao configurar cargos de boas-vindas: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_cargos_boasvindas(self, guild_id: int):
+        """Retorna (cargo_membro_id, cargo_morador_id)."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT cargo_membro_id, cargo_morador_id
+                    FROM config_servidores WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    row = await cursor.fetchone()
+                    if not row:
+                        return None, None
+                    return row[0], row[1]
+        except Exception as e:
+            print(f"❌ Erro ao buscar cargos de boas-vindas: {e}")
+            traceback.print_exc()
+            return None, None
+
     # -------------------- CONFIG META --------------------
 
     async def set_config_meta(self, guild_id: int, cargo_gerente_id: int = None,
@@ -347,6 +394,56 @@ class Database:
             print(f"❌ Erro ao buscar config de meta: {e}")
             traceback.print_exc()
             return None
+
+    # -------------------- CANAIS META --------------------
+
+    async def criar_canal_meta(self, guild_id: int, canal_id: int, user_id: int):
+        """Registra o canal de meta criado para um usuário."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT OR REPLACE INTO canais_meta (canal_id, guild_id, user_id, data_criacao, ativo)
+                    VALUES (?, ?, ?, ?, 1)
+                ''', (int(canal_id), int(guild_id), int(user_id), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao registrar canal de meta: {e}")
+            traceback.print_exc()
+            return False
+
+    async def fechar_canal_meta(self, canal_id: int):
+        """Marca um canal de meta como fechado."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE canais_meta
+                    SET ativo = 0
+                    WHERE canal_id = ?
+                ''', (int(canal_id),))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao fechar canal de meta: {e}")
+            traceback.print_exc()
+            return False
+
+    async def registrar_meta_aprovada(self, guild_id: int, user_id: int, aprovado_por_id: int, descricao: str):
+        """Registra uma meta aprovada."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT INTO metas_aprovadas (guild_id, user_id, aprovado_por_id, descricao, data_aprovacao)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (int(guild_id), int(user_id), int(aprovado_por_id), str(descricao), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao registrar meta aprovada: {e}")
+            traceback.print_exc()
+            return False
 
     # -------------------- PREÇOS (VENDAS) --------------------
 

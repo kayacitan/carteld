@@ -2,13 +2,13 @@ import discord
 from discord import ui, app_commands
 from discord.ext import commands
 import traceback
-
-# --- CONFIGURAÇÕES IMPORTANTES ---
-CARGO_NOVO_ID = 1366172238449082500  # ID do cargo que o membro vai ganhar
-CANAL_LOGS_ID = 1366148719967211612  # ID do canal onde as solicitações serão enviadas
+from database import Database
 
 # --- O MODAL DE PREENCHIMENTO ---
 class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
+    def __init__(self, db: Database):
+        super().__init__()
+        self.db = db
     nome = ui.TextInput(
         label='Nome (até 10 letras)',
         placeholder='Digite seu nome...',
@@ -45,7 +45,15 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
                 return
             
             # Busca o canal de logs
-            canal_logs = interaction.guild.get_channel(CANAL_LOGS_ID)
+            canal_log_id = await self.db.get_canal_log(interaction.guild.id)
+            if not canal_log_id:
+                await interaction.response.send_message(
+                    "⚠️ Canal de logs não configurado! Use `/config` para configurar.",
+                    ephemeral=True
+                )
+                return
+
+            canal_logs = interaction.guild.get_channel(canal_log_id)
             
             if canal_logs is None:
                 await interaction.response.send_message(
@@ -56,6 +64,7 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
             
             # Cria a view de aprovação com custom_id para persistência
             view_aprovacao = AprovacaoView(
+                db=self.db,
                 user_id=interaction.user.id,
                 nome=self.nome.value,
                 rg=self.rg.value
@@ -111,8 +120,9 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
 
 # --- VIEW DE APROVAÇÃO (PARA ADMINS) ---
 class AprovacaoView(ui.View):
-    def __init__(self, user_id: int, nome: str, rg: str):
+    def __init__(self, db: Database, user_id: int, nome: str, rg: str):
         super().__init__(timeout=None)  # Não expira
+        self.db = db
         self.user_id = user_id
         self.nome = nome
         self.rg = rg
@@ -138,7 +148,15 @@ class AprovacaoView(ui.View):
                 return
             
             # Busca o cargo
-            cargo = interaction.guild.get_role(CARGO_NOVO_ID)
+            cargo_membro_id, _ = await self.db.get_cargos_boasvindas(interaction.guild.id)
+            if not cargo_membro_id:
+                await interaction.response.send_message(
+                    "⚠️ Cargo de membro não configurado! Use `/config`.",
+                    ephemeral=True
+                )
+                return
+
+            cargo = interaction.guild.get_role(int(cargo_membro_id))
             
             if cargo is None:
                 await interaction.response.send_message(
@@ -256,8 +274,9 @@ class AprovacaoView(ui.View):
 
 # --- VIEW DO PAINEL DE REGISTRO COM LAYOUTVIEW ---
 class RegistroView(ui.LayoutView):
-    def __init__(self):
+    def __init__(self, db: Database):
         super().__init__()
+        self.db = db
         
         # Container
         container = ui.Container()
@@ -265,7 +284,9 @@ class RegistroView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay('Clique no botão abaixo para iniciar seu registro!'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.accent_color = discord.Colour.green()
+        galeria_registro = ui.MediaGallery()
+        galeria_registro.add_item(media='https://media.discordapp.net/attachments/1366148719967211612/1465503657452765286/Cartel.png?ex=69795823&is=697806a3&hm=6d37d5b02ab93b40bb31234a9b2518a68222014a0eb9472be730b8b1c5990561&=&format=webp&quality=lossless')
+        container.add_item(galeria_registro)
         
         # ✅ BOTÃO DENTRO DE ACTIONROW DENTRO DO CONTAINER
         botao_registrar = ui.Button(
@@ -283,7 +304,8 @@ class RegistroView(ui.LayoutView):
     async def abrir_modal(self, interaction: discord.Interaction):
         try:
             # Verifica se já tem o cargo (segurança)
-            cargo = interaction.guild.get_role(CARGO_NOVO_ID)
+            cargo_membro_id, _ = await self.db.get_cargos_boasvindas(interaction.guild.id)
+            cargo = interaction.guild.get_role(int(cargo_membro_id)) if cargo_membro_id else None
             if cargo and cargo in interaction.user.roles:
                 await interaction.response.send_message(
                     "Ei, você já está registrado! 😎", 
@@ -292,7 +314,7 @@ class RegistroView(ui.LayoutView):
                 return
             
             # Abre o modal para preencher dados
-            modal = ModalRegistro()
+            modal = ModalRegistro(self.db)
             await interaction.response.send_modal(modal)
             
         except Exception as e:
@@ -311,15 +333,16 @@ class RegistroView(ui.LayoutView):
 class RegistroCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.db = Database()
         # Adiciona a view de aprovação persistente
-        self.bot.add_view(AprovacaoView(user_id=0, nome="", rg=""))
+        self.bot.add_view(AprovacaoView(self.db, user_id=0, nome="", rg=""))
         print("✅ Cog de Registro carregado com sucesso!")
 
     @app_commands.command(name='registro', description='Envia o painel de registro')
     @app_commands.checks.has_permissions(administrator=True)
     async def enviar_registro(self, interaction: discord.Interaction):
         try:
-            view = RegistroView()
+            view = RegistroView(self.db)
             await interaction.response.send_message(view=view)
             print(f"✅ Painel de registro enviado por {interaction.user}")
             

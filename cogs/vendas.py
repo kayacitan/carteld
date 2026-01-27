@@ -248,7 +248,6 @@ class EscolherProdutoView(ui.LayoutView):
         select.callback = self.on_select_produto
 
         container.add_item(ui.ActionRow(select))
-        container.accent_color = discord.Colour.gold()
         self.add_item(container)
 
     async def on_select_produto(self, interaction: discord.Interaction):
@@ -262,10 +261,10 @@ class PainelVendasView(ui.LayoutView):
         self.db = db
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 🧾 Sistema de Vendas"))
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.TextDisplay("# 🧾 Registro de Vendas"))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay("Escolha uma opção abaixo:"))
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         btn_venda = ui.Button(label="Registrar Venda", style=discord.ButtonStyle.secondary)
         btn_venda.callback = self.abrir_venda
@@ -275,10 +274,10 @@ class PainelVendasView(ui.LayoutView):
 
         try:
             container.add_item(ui.Section(
-                ui.TextDisplay("• **Registrar Venda**\nRegistra **venda imediata** e envia para o canal de logs, registre com atenção!"),
+                ui.TextDisplay("• **Registrar Venda**\nRegistra **venda imediata** e envia para o canal de logs, registre com **atenção!**"),
                 accessory=btn_venda
             ))
-            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
             container.add_item(ui.Section(
                 ui.TextDisplay("• **Registrar Encomenda**\nCria **ENCOMENDA** pendente e permite confirmar entrega mais tarde, registre com **atenção!**"),
                 accessory=btn_encomenda
@@ -286,11 +285,15 @@ class PainelVendasView(ui.LayoutView):
         except Exception:
             container.add_item(ui.TextDisplay("• **Registrar Venda**\nRegistra **venda imediata** e envia para o canal de logs, registre com **atenção!**"))
             container.add_item(ui.ActionRow(btn_venda))
-            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
             container.add_item(ui.TextDisplay("• **Registrar Encomenda**\nCria **ENCOMENDA** pendente e permite confirmar entrega mais tarde, registre com **atenção!**"))
             container.add_item(ui.ActionRow(btn_encomenda))
 
-        container.accent_color = discord.Colour.dark_blue()
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+        galeria_vendas = ui.MediaGallery()
+        galeria_vendas.add_item(media='https://media.discordapp.net/attachments/1366148719967211612/1465503657452765286/Cartel.png?ex=69795823&is=697806a3&hm=6d37d5b02ab93b40bb31234a9b2518a68222014a0eb9472be730b8b1c5990561&=&format=webp&quality=lossless')
+        container.add_item(galeria_vendas)
+
         self.add_item(container)
 
     async def abrir_venda(self, interaction: discord.Interaction):
@@ -313,8 +316,7 @@ class LogVendaView(ui.LayoutView):
 
         container = ui.Container()
         container.add_item(ui.TextDisplay("# 💰 Venda Registrada"))
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f"**👤 Vendedor:** {usuario.mention} (ID: {usuario.id})"))
         container.add_item(ui.TextDisplay(f"**📦 Produto:** {produto_nome}"))
         container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {quantidade}"))
@@ -323,13 +325,12 @@ class LogVendaView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f"**🧑 Comprador:** {comprador}"))
 
         if saldo_atual is not None:
-            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+            container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
             container.add_item(ui.TextDisplay(f"**🏦 Saldo atual do vendedor:** {_fmt_money(saldo_atual)}"))
 
-        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f"**🕒 Data:** {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"))
 
-        container.accent_color = discord.Colour.green()
         self.add_item(container)
 
 
@@ -352,7 +353,6 @@ class LogEncomendaPendenteView(ui.LayoutView):
         self.btn_confirmar.callback = self.confirmar_entrega
         container.add_item(ui.ActionRow(self.btn_confirmar))
 
-        container.accent_color = discord.Colour.orange()
         self.add_item(container)
 
     async def confirmar_entrega(self, interaction: discord.Interaction):
