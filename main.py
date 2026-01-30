@@ -1,7 +1,8 @@
 import discord
 import asyncio
 import os
-from discord.ext import commands
+import itertools
+from discord.ext import commands, tasks
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,10 +10,31 @@ load_dotenv()
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# 🔁 Ciclo de status (SÓ TEXTO)
+status_cycle = itertools.cycle([
+    discord.Game("Vendas 💰"),
+    discord.Game("Fabricando ⚙️"),
+    discord.Game("Em ação 🔥"),
+])
+
+# 🔁 Loop que troca o TEXTO mantendo AUSENTE
+@tasks.loop(seconds=60)
+async def rotate_status():
+    activity = next(status_cycle)
+    await bot.change_presence(
+        status=discord.Status.idle,  # sempre ausente
+        activity=activity
+    )
+
 
 @bot.event
 async def on_ready():
     print(f'Bot conectado como {bot.user}')
+
+    # inicia o loop UMA vez
+    if not rotate_status.is_running():
+        rotate_status.start()
+
     try:
         synced = await bot.tree.sync()
         print(f'{len(synced)} comando(s) sincronizado(s)')
@@ -31,6 +53,7 @@ COGS = [
     'cogs.estoque',
     'cogs.dashboard',
 ]
+
 
 async def load_extensions():
     for cog in COGS:

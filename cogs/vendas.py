@@ -199,7 +199,8 @@ class VendaEncomendaModal(ui.Modal):
                 quantidade=qtd,
                 preco_unit=preco_unit,
                 cliente=cliente,
-                user_name=str(interaction.user)
+                user_name=str(interaction.user),
+                user_id=interaction.user.id
             )
             mensagem = await canal_logs.send(view=view_encomenda)
             await self.db.set_encomenda_message_id(encomenda_id, mensagem.id)
@@ -351,7 +352,7 @@ class LogVendaView(ui.LayoutView):
 class LogEncomendaPendenteView(ui.LayoutView):
     def __init__(self, db: Database, encomenda_id: int, dono_id: int,
                  produto_nome: str, quantidade: int, preco_unit: float,
-                 cliente: str, user_name: str):
+                 cliente: str, user_name: str, user_id: int):
         super().__init__(timeout=None)
         self.db = db
         self.encomenda_id = int(encomenda_id)
@@ -362,26 +363,28 @@ class LogEncomendaPendenteView(ui.LayoutView):
         self.preco_unit = float(preco_unit)
         self.cliente = str(cliente)
         self.user_name = str(user_name)
+        self.user_id = int(user_id)
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 📦 Encomenda Pendente"))
+        container.add_item(ui.TextDisplay('# Encomenda Pendente'))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+        container.add_item(ui.TextDisplay(f'**ID da encomenda:** #{self.encomenda_id}'))
+        container.add_item(ui.TextDisplay(f'**Vendedor:** <@{self.user_id}> (ID: {self.user_id})'))
+        container.add_item(ui.TextDisplay(f'**Produto:** {self.produto_nome}'))
+        container.add_item(ui.TextDisplay(f'**Quantidade:** {self.quantidade}'))
+        container.add_item(ui.TextDisplay(f'**Valor unitario:** {_fmt_money(self.preco_unit)}'))
+        container.add_item(ui.TextDisplay(f'**Total:** {_fmt_money(self.preco_unit * self.quantidade)}'))
+        container.add_item(ui.TextDisplay(f'**Comprador:** {self.cliente or "Nao informado"}'))
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
+        container.add_item(ui.TextDisplay(f'**Data:** {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**🆔 Encomenda:** #{self.encomenda_id}"))
-        container.add_item(ui.TextDisplay(
-            f"**📦 Produto:** {self.produto_nome}\n"
-            f"**🔢 Quantidade:** {self.quantidade}\n"
-            f"**💵 Valor unitário:** {_fmt_money(self.preco_unit)}\n"
-            f"**💰 Total:** {_fmt_money(self.preco_unit * self.quantidade)}\n"
-            f"**🧑 Cliente:** {self.cliente or 'Não informado'}\n"
-            f"**👤 Vendedor:** {self.user_name}"
-        ))
-        container.add_item(ui.TextDisplay("Clique para confirmar quando a entrega for feita."))
+        container.add_item(ui.TextDisplay('Clique para confirmar quando a entrega for feita.'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         self.btn_confirmar = ui.Button(
-            label="Confirmar Entrega",
+            label='Confirmar Entrega',
             style=discord.ButtonStyle.success,
-            custom_id="encomenda_confirmar"
+            custom_id='encomenda_confirmar'
         )
         self.btn_confirmar.callback = self.confirmar_entrega
         container.add_item(ui.ActionRow(self.btn_confirmar))
@@ -525,7 +528,8 @@ class VendasCog(commands.Cog):
                         quantidade=quantidade,
                         preco_unit=preco_unit,
                         cliente=cliente or "Não informado",
-                        user_name=user_name
+                        user_name=user_name,
+                        user_id=_user_id
                     )
                     self.bot.add_view(view, message_id=int(message_id))
                     await mensagem.edit(view=view)
