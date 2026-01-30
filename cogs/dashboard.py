@@ -22,6 +22,15 @@ PAGES = {
     "BANCO": "BANCO",
 }
 
+PAGE_ORDER = [
+    PAGES["VENDAS"],
+    PAGES["FABRICACAO"],
+    PAGES["ESTOQUE"],
+    PAGES["ENCOMENDAS"],
+    PAGES["METAS"],
+    PAGES["BANCO"],
+]
+
 
 def _fmt_money(v: float | int | None) -> str:
     return f"R$ {float(v or 0.0):,.2f}".replace(",", ".")
@@ -50,7 +59,7 @@ class DashboardView(ui.LayoutView):
         self.db = db
         self.guild = guild
         self.user_id = int(user_id)
-        self.page = PAGES["HOME"]
+        self.page = PAGES["VENDAS"]
 
     async def render(self):
         self.clear_items()
@@ -81,22 +90,41 @@ class DashboardView(ui.LayoutView):
         button.callback = _callback
         return button
 
-    def _action_buttons(self, include_back: bool):
+    def _action_buttons(self):
         buttons = []
-        if include_back:
-            btn_back = ui.Button(label="⬅ Voltar", style=discord.ButtonStyle.secondary)
-            btn_back.callback = self._on_back
-            buttons.append(btn_back)
+        btn_prev = ui.Button(label="Anterior", style=discord.ButtonStyle.secondary)
+        btn_prev.callback = self._on_prev
+        buttons.append(btn_prev)
 
-        btn_refresh = ui.Button(label="🔄 Atualizar", style=discord.ButtonStyle.primary)
+        btn_next = ui.Button(label="Proximo", style=discord.ButtonStyle.secondary)
+        btn_next.callback = self._on_next
+        buttons.append(btn_next)
+
+        btn_refresh = ui.Button(label="Atualizar", style=discord.ButtonStyle.primary)
         btn_refresh.callback = self._on_refresh
         buttons.append(btn_refresh)
 
-        btn_close = ui.Button(label="❌ Fechar", style=discord.ButtonStyle.danger)
+        btn_close = ui.Button(label="Fechar", style=discord.ButtonStyle.danger)
         btn_close.callback = self._on_close
         buttons.append(btn_close)
 
         return ui.ActionRow(*buttons)
+
+    async def _safe_defer(self, interaction: discord.Interaction):
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
+    def _page_index(self) -> int:
+        try:
+            return PAGE_ORDER.index(self.page)
+        except ValueError:
+            return 0
+
+    def _set_page_by_offset(self, offset: int):
+        if not PAGE_ORDER:
+            return
+        idx = (self._page_index() + offset) % len(PAGE_ORDER)
+        self.page = PAGE_ORDER[idx]
 
     async def _ensure_author(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.user_id:
@@ -113,27 +141,64 @@ class DashboardView(ui.LayoutView):
         try:
             self.page = target_page
             await self.render()
-            await interaction.response.edit_message(view=self)
+            await self._safe_defer(interaction)
+            await interaction.edit_original_response(view=self)
         except Exception as e:
             print(f"Erro ao navegar no dashboard: {e}")
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "❌ Ocorreu um erro ao abrir a tela. Tente novamente.",
+                    "Erro ao abrir a tela. Tente novamente.",
                     ephemeral=True
                 )
             except Exception:
                 pass
 
-    async def _on_back(self, interaction: discord.Interaction):
-        await self._on_nav(interaction, PAGES["HOME"])
+    async def _on_prev(self, interaction: discord.Interaction):
+        if not await self._ensure_author(interaction):
+            return
+        try:
+            self._set_page_by_offset(-1)
+            await self.render()
+            await self._safe_defer(interaction)
+            await interaction.edit_original_response(view=self)
+        except Exception as e:
+            print(f"Erro ao voltar no dashboard: {e}")
+            traceback.print_exc()
+            try:
+                await interaction.response.send_message(
+                    "Erro ao abrir a tela. Tente novamente.",
+                    ephemeral=True
+                )
+            except Exception:
+                pass
+
+    async def _on_next(self, interaction: discord.Interaction):
+        if not await self._ensure_author(interaction):
+            return
+        try:
+            self._set_page_by_offset(1)
+            await self.render()
+            await self._safe_defer(interaction)
+            await interaction.edit_original_response(view=self)
+        except Exception as e:
+            print(f"Erro ao avancar no dashboard: {e}")
+            traceback.print_exc()
+            try:
+                await interaction.response.send_message(
+                    "Erro ao abrir a tela. Tente novamente.",
+                    ephemeral=True
+                )
+            except Exception:
+                pass
 
     async def _on_refresh(self, interaction: discord.Interaction):
         if not await self._ensure_author(interaction):
             return
         try:
             await self.render()
-            await interaction.response.edit_message(view=self)
+            await self._safe_defer(interaction)
+            await interaction.edit_original_response(view=self)
         except Exception as e:
             print(f"Erro ao atualizar dashboard: {e}")
             traceback.print_exc()
@@ -149,7 +214,8 @@ class DashboardView(ui.LayoutView):
         if not await self._ensure_author(interaction):
             return
         try:
-            await interaction.response.edit_message(content="Painel fechado.", view=None)
+            await self._safe_defer(interaction)
+            await interaction.edit_original_response(content="Painel fechado.", view=None)
         except Exception as e:
             print(f"Erro ao fechar dashboard: {e}")
             traceback.print_exc()
@@ -247,7 +313,7 @@ class DashboardView(ui.LayoutView):
         self._add_section(container, banco_texto, self._nav_button("Ver", PAGES["BANCO"]))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(self._action_buttons(include_back=False))
+        container.add_item(self._action_buttons())
         return container
 
     async def _build_vendas(self) -> ui.Container:
@@ -273,7 +339,7 @@ class DashboardView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(f"**Últimas 10 vendas:**\n{lista}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(self._action_buttons(include_back=True))
+        container.add_item(self._action_buttons())
         return container
 
     async def _build_fabricacao(self) -> ui.Container:
@@ -295,7 +361,7 @@ class DashboardView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(f"**Últimas 10 fabricações:**\n{lista}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(self._action_buttons(include_back=True))
+        container.add_item(self._action_buttons())
         return container
 
     async def _build_estoque(self) -> ui.Container:
@@ -313,7 +379,7 @@ class DashboardView(ui.LayoutView):
             ))
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        container.add_item(self._action_buttons(include_back=True))
+        container.add_item(self._action_buttons())
         return container
 
     async def _build_encomendas(self) -> ui.Container:
@@ -345,7 +411,7 @@ class DashboardView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(f"**Confirmadas recentes:**\n{confirmadas_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(self._action_buttons(include_back=True))
+        container.add_item(self._action_buttons())
         return container
 
     async def _build_metas(self) -> ui.Container:
@@ -360,7 +426,7 @@ class DashboardView(ui.LayoutView):
             f"• Pendentes: indisponível"
         ))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(self._action_buttons(include_back=True))
+        container.add_item(self._action_buttons())
         return container
 
     async def _build_banco(self) -> ui.Container:
@@ -387,7 +453,7 @@ class DashboardView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(f"**Movimentos recentes:**\n{mov_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(self._action_buttons(include_back=True))
+        container.add_item(self._action_buttons())
         return container
 
 
@@ -426,7 +492,8 @@ class DashboardCog(commands.Cog):
 
             view = DashboardView(self.db, interaction.guild, interaction.user.id)
             await view.render()
-            await interaction.response.send_message(view=view, ephemeral=True)
+            await interaction.response.defer(ephemeral=True)
+            await interaction.followup.send(view=view, ephemeral=True)
 
         except Exception as e:
             print(f"Erro no comando /dashboard: {e}")
