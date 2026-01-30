@@ -104,10 +104,6 @@ class DashboardView(ui.LayoutView):
         btn_refresh.callback = self._on_refresh
         buttons.append(btn_refresh)
 
-        btn_close = ui.Button(label="Fechar", style=discord.ButtonStyle.danger)
-        btn_close.callback = self._on_close
-        buttons.append(btn_close)
-
         return ui.ActionRow(*buttons)
 
     async def _safe_defer(self, interaction: discord.Interaction):
