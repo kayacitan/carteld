@@ -326,11 +326,12 @@ class PainelVendasView(ui.LayoutView):
 
 class LogVendaView(ui.LayoutView):
     def __init__(self, usuario: discord.Member, produto_nome: str, quantidade: int, preco_unit: float,
-                 valor_total: float, comprador: str, saldo_atual: float | None = None):
+                 valor_total: float, comprador: str, saldo_atual: float | None = None,
+                 titulo: str = "💰 Venda Registrada"):
         super().__init__()
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 💰 Venda Registrada"))
+        container.add_item(ui.TextDisplay(f"# {titulo}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f"**👤 Vendedor:** {usuario.mention} (ID: {usuario.id})"))
         container.add_item(ui.TextDisplay(f"**📦 Produto:** {produto_nome}"))
@@ -432,9 +433,6 @@ class LogEncomendaPendenteView(ui.LayoutView):
                 ref_id=int(self.encomenda_id)
             )
 
-            canal_log_id = await self.db.get_canal_log(interaction.guild.id)
-            canal_logs = interaction.guild.get_channel(canal_log_id) if canal_log_id else None
-
             log_final = LogVendaView(
                 usuario=interaction.guild.get_member(int(user_id)) or interaction.user,
                 produto_nome=str(produto_nome),
@@ -442,13 +440,13 @@ class LogEncomendaPendenteView(ui.LayoutView):
                 preco_unit=float(preco_unit),
                 valor_total=float(valor_total),
                 comprador=str(cliente or "Não informado"),
-                saldo_atual=novo_saldo
+                saldo_atual=novo_saldo,
+                titulo="📦 Encomenda Entregue"
             )
 
-            if canal_logs:
-                await canal_logs.send(view=log_final)
+            await interaction.message.edit(view=log_final)
 
-            await interaction.followup.send("✅ Entrega confirmada! Log final enviada.", ephemeral=True)
+            await interaction.followup.send("✅ Entrega confirmada! Log atualizado.", ephemeral=True)
 
         except Exception as e:
             print(f"Erro ao confirmar encomenda: {e}")

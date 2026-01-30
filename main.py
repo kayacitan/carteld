@@ -12,9 +12,8 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # 🔁 Ciclo de status (SÓ TEXTO)
 status_cycle = itertools.cycle([
-    discord.Game("Vendas 💰"),
-    discord.Game("Fabricando ⚙️"),
-    discord.Game("Em ação 🔥"),
+    discord.Game("Estoy cansado jefe... 😴"),
+    discord.Game("Ninguém trabalha aqui! 🚫"),
 ])
 
 # 🔁 Loop que troca o TEXTO mantendo AUSENTE
