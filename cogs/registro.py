@@ -328,7 +328,7 @@ class RegistroView(ui.LayoutView):
         
         # Container
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# Registro Oficial'))
+        container.add_item(ui.TextDisplay('# Registre-se'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay('Clique no botão abaixo para iniciar seu registro!'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))

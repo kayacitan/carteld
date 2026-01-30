@@ -90,12 +90,18 @@ class Database:
                         quantidade INTEGER NOT NULL,
                         preco_unit REAL NOT NULL,
                         cliente TEXT,
+                        message_id INTEGER,
                         status TEXT NOT NULL DEFAULT 'pendente',
                         criado_em TEXT NOT NULL,
                         confirmado_em TEXT,
                         confirmado_por_id INTEGER
                     )
                 ''')
+                # Garantir coluna de mensagem para persistência
+                try:
+                    await db.execute("ALTER TABLE encomendas ADD COLUMN message_id INTEGER")
+                except Exception:
+                    pass
 
                 # --- Banco pessoal ---
                 await db.execute('''
@@ -571,6 +577,26 @@ class Database:
             traceback.print_exc()
             return False
 
+    async def consumir_estoque_sem_negativo(self, guild_id: int, produto_id: str, quantidade: int):
+        """Consome até o disponível, sem deixar estoque negativo. Retorna (ok, consumido, disponivel)."""
+        try:
+            qtd, res, disp = await self.get_estoque_produto(guild_id, produto_id)
+            consumido = min(int(quantidade), int(disp))
+            novo_qtd = int(qtd) - int(consumido)
+            if consumido > 0:
+                async with aiosqlite.connect(self.db_name) as db:
+                    await db.execute('''
+                        UPDATE estoque_produtos
+                        SET quantidade = ?, atualizado_em = ?
+                        WHERE guild_id = ? AND produto_id = ?
+                    ''', (novo_qtd, datetime.now().isoformat(), int(guild_id), str(produto_id)))
+                    await db.commit()
+            return True, int(consumido), int(disp)
+        except Exception as e:
+            print(f"❌ Erro ao consumir estoque (sem negativo): {e}")
+            traceback.print_exc()
+            return False, 0, 0
+
     async def reservar_estoque(self, guild_id: int, produto_id: str, quantidade: int):
         """Reserva estoque disponível para encomenda pendente."""
         try:
@@ -851,6 +877,37 @@ class Database:
             traceback.print_exc()
             return None
 
+    async def set_encomenda_message_id(self, encomenda_id: int, message_id: int):
+        """Associa a mensagem do log à encomenda para reidratar botões após reinício."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE encomendas
+                    SET message_id = ?
+                    WHERE id = ?
+                ''', (int(message_id), int(encomenda_id)))
+                await db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Erro ao salvar message_id da encomenda: {e}")
+            traceback.print_exc()
+            return False
+
+    async def listar_encomendas_pendentes(self):
+        """Retorna lista de (id, guild_id, user_id, message_id) pendentes com mensagem."""
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT id, guild_id, user_id, message_id
+                    FROM encomendas
+                    WHERE status = 'pendente' AND message_id IS NOT NULL
+                ''') as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao listar encomendas pendentes: {e}")
+            traceback.print_exc()
+            return []
+
     # -------------------- CONSULTAS PARA /BANCO --------------------
 
     async def get_logs_usuario_fabricacao(self, guild_id: int, user_id: int, limite: int = 30):
@@ -882,6 +939,149 @@ class Database:
                     return await cursor.fetchall()
         except Exception as e:
             print(f"❌ Erro ao buscar logs de vendas: {e}")
+            traceback.print_exc()
+            return []
+
+    # -------------------- DASHBOARD (SERVIDOR) --------------------
+
+    async def get_logs_vendas_servidor(self, guild_id: int, limite: int = 10):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT produto_nome, quantidade, valor_total, comprador, data_venda, user_name
+                    FROM logs_vendas
+                    WHERE guild_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao buscar logs de vendas do servidor: {e}")
+            traceback.print_exc()
+            return []
+
+    async def get_total_vendas_periodo(self, guild_id: int, inicio_iso: str, fim_iso: str):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT COALESCE(SUM(valor_total), 0)
+                    FROM logs_vendas
+                    WHERE guild_id = ? AND data_venda BETWEEN ? AND ?
+                ''', (int(guild_id), str(inicio_iso), str(fim_iso))) as cursor:
+                    row = await cursor.fetchone()
+                    return float(row[0] or 0.0)
+        except Exception as e:
+            print(f"❌ Erro ao somar vendas por período: {e}")
+            traceback.print_exc()
+            return 0.0
+
+    async def get_logs_fabricacao_servidor(self, guild_id: int, limite: int = 10):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT produto_nome, quantidade, custo_total, data_fabricacao, user_name
+                    FROM logs_fabricacao
+                    WHERE guild_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao buscar logs de fabricação do servidor: {e}")
+            traceback.print_exc()
+            return []
+
+    async def get_total_custo_fabricacao_periodo(self, guild_id: int, inicio_iso: str, fim_iso: str):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT COALESCE(SUM(custo_total), 0)
+                    FROM logs_fabricacao
+                    WHERE guild_id = ? AND data_fabricacao BETWEEN ? AND ?
+                ''', (int(guild_id), str(inicio_iso), str(fim_iso))) as cursor:
+                    row = await cursor.fetchone()
+                    return float(row[0] or 0.0)
+        except Exception as e:
+            print(f"❌ Erro ao somar fabricação por período: {e}")
+            traceback.print_exc()
+            return 0.0
+
+    async def get_encomendas_pendentes_servidor(self, guild_id: int, limite: int = 10):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT id, produto_nome, quantidade, preco_unit, cliente, user_name, criado_em
+                    FROM encomendas
+                    WHERE guild_id = ? AND status = 'pendente'
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao listar encomendas pendentes do servidor: {e}")
+            traceback.print_exc()
+            return []
+
+    async def get_ultimas_encomendas_confirmadas(self, guild_id: int, limite: int = 5):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT id, produto_nome, quantidade, preco_unit, cliente, user_name, confirmado_em
+                    FROM encomendas
+                    WHERE guild_id = ? AND status = 'confirmada'
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao listar encomendas confirmadas do servidor: {e}")
+            traceback.print_exc()
+            return []
+
+    async def get_metas_aprovadas_periodo(self, guild_id: int, inicio_iso: str, fim_iso: str):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT COUNT(*)
+                    FROM metas_aprovadas
+                    WHERE guild_id = ? AND data_aprovacao BETWEEN ? AND ?
+                ''', (int(guild_id), str(inicio_iso), str(fim_iso))) as cursor:
+                    row = await cursor.fetchone()
+                    return int(row[0] or 0)
+        except Exception as e:
+            print(f"❌ Erro ao contar metas aprovadas no período: {e}")
+            traceback.print_exc()
+            return 0
+
+    async def get_movimentos_banco_servidor(self, guild_id: int, limite: int = 10):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT user_name, origem, delta, saldo_depois, criado_em
+                    FROM movimentos_banco
+                    WHERE guild_id = ?
+                    ORDER BY id DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao buscar movimentos do banco do servidor: {e}")
+            traceback.print_exc()
+            return []
+
+    async def get_top_saldos_servidor(self, guild_id: int, limite: int = 5):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT user_name, saldo
+                    FROM banco_usuarios
+                    WHERE guild_id = ?
+                    ORDER BY saldo DESC
+                    LIMIT ?
+                ''', (int(guild_id), int(limite))) as cursor:
+                    return await cursor.fetchall()
+        except Exception as e:
+            print(f"❌ Erro ao buscar top saldos do servidor: {e}")
             traceback.print_exc()
             return []
 

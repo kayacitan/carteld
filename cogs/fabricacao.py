@@ -322,7 +322,7 @@ class LogFabricacaoView(ui.LayoutView):
 # --- VIEW PRINCIPAL DE FABRICACAO ---
 class FabricacaoView(ui.LayoutView):
     def __init__(self, db: Database):
-        super().__init__()
+        super().__init__(timeout=None)
         self.db = db
 
         container = ui.Container()
