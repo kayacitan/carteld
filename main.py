@@ -29,6 +29,7 @@ COGS = [
     'cogs.vendas',
     'cogs.banco',
     'cogs.estoque',
+    'cogs.dashboard',
 ]
 
 async def load_extensions():

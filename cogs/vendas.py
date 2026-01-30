@@ -125,11 +125,12 @@ class VendaEncomendaModal(ui.Modal):
 
             # ---------------- VENDA ----------------
             if self.modo == "venda":
-                ok_estoque = await self.db.consumir_estoque(interaction.guild.id, self.produto_id, qtd)
+                ok_estoque, consumido, disp = await self.db.consumir_estoque_sem_negativo(
+                    interaction.guild.id, self.produto_id, qtd
+                )
                 if not ok_estoque:
-                    _, _, disp = await self.db.get_estoque_produto(interaction.guild.id, self.produto_id)
                     await interaction.response.send_message(
-                        f"❌ Estoque insuficiente para vender.\nDisponível: **{disp}**",
+                        "Erro ao consumir estoque. Tente novamente.",
                         ephemeral=True
                     )
                     return
@@ -174,8 +175,7 @@ class VendaEncomendaModal(ui.Modal):
                 return
 
             # ---------------- ENCOMENDA ----------------
-            # reserva estoque agora (permitindo ficar "negativo" no disponível), saldo só mexe na confirmação
-            await self.db.reservar_estoque_permitir_negativo(interaction.guild.id, self.produto_id, qtd)
+            # encomenda vira lembrete: nao reserva/consome estoque aqui
 
             encomenda_id = await self.db.criar_encomenda(
                 guild_id=interaction.guild.id,
@@ -194,9 +194,15 @@ class VendaEncomendaModal(ui.Modal):
             view_encomenda = LogEncomendaPendenteView(
                 db=self.db,
                 encomenda_id=encomenda_id,
-                dono_id=interaction.user.id
+                dono_id=interaction.user.id,
+                produto_nome=nome_produto,
+                quantidade=qtd,
+                preco_unit=preco_unit,
+                cliente=cliente,
+                user_name=str(interaction.user)
             )
-            await canal_logs.send(view=view_encomenda)
+            mensagem = await canal_logs.send(view=view_encomenda)
+            await self.db.set_encomenda_message_id(encomenda_id, mensagem.id)
 
             await interaction.response.send_message("✅ Encomenda registrada como pendente!", ephemeral=True)
 
@@ -257,7 +263,7 @@ class EscolherProdutoView(ui.LayoutView):
 
 class PainelVendasView(ui.LayoutView):
     def __init__(self, db: Database):
-        super().__init__()
+        super().__init__(timeout=None)
         self.db = db
 
         container = ui.Container()
@@ -266,10 +272,18 @@ class PainelVendasView(ui.LayoutView):
         container.add_item(ui.TextDisplay("Escolha uma opção abaixo:"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
-        btn_venda = ui.Button(label="Registrar Venda", style=discord.ButtonStyle.secondary)
+        btn_venda = ui.Button(
+            label="Registrar Venda",
+            style=discord.ButtonStyle.secondary,
+            custom_id="painel_vendas:registrar_venda"
+        )
         btn_venda.callback = self.abrir_venda
 
-        btn_encomenda = ui.Button(label="Registrar Encomenda", style=discord.ButtonStyle.secondary)
+        btn_encomenda = ui.Button(
+            label="Registrar Encomenda",
+            style=discord.ButtonStyle.secondary,
+            custom_id="painel_vendas:registrar_encomenda"
+        )
         btn_encomenda.callback = self.abrir_encomenda
 
         try:
@@ -335,21 +349,40 @@ class LogVendaView(ui.LayoutView):
 
 
 class LogEncomendaPendenteView(ui.LayoutView):
-    def __init__(self, db: Database, encomenda_id: int, dono_id: int):
-        super().__init__()
+    def __init__(self, db: Database, encomenda_id: int, dono_id: int,
+                 produto_nome: str, quantidade: int, preco_unit: float,
+                 cliente: str, user_name: str):
+        super().__init__(timeout=None)
         self.db = db
         self.encomenda_id = int(encomenda_id)
         self.dono_id = int(dono_id)
         self._confirmado = False
+        self.produto_nome = str(produto_nome)
+        self.quantidade = int(quantidade)
+        self.preco_unit = float(preco_unit)
+        self.cliente = str(cliente)
+        self.user_name = str(user_name)
 
         container = ui.Container()
         container.add_item(ui.TextDisplay("# 📦 Encomenda Pendente"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(f"**🆔 Encomenda:** #{self.encomenda_id}"))
+        container.add_item(ui.TextDisplay(
+            f"**📦 Produto:** {self.produto_nome}\n"
+            f"**🔢 Quantidade:** {self.quantidade}\n"
+            f"**💵 Valor unitário:** {_fmt_money(self.preco_unit)}\n"
+            f"**💰 Total:** {_fmt_money(self.preco_unit * self.quantidade)}\n"
+            f"**🧑 Cliente:** {self.cliente or 'Não informado'}\n"
+            f"**👤 Vendedor:** {self.user_name}"
+        ))
         container.add_item(ui.TextDisplay("Clique para confirmar quando a entrega for feita."))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        self.btn_confirmar = ui.Button(label="✅ Confirmar Entrega", style=discord.ButtonStyle.success)
+        self.btn_confirmar = ui.Button(
+            label="Confirmar Entrega",
+            style=discord.ButtonStyle.success,
+            custom_id="encomenda_confirmar"
+        )
         self.btn_confirmar.callback = self.confirmar_entrega
         container.add_item(ui.ActionRow(self.btn_confirmar))
 
@@ -382,10 +415,6 @@ class LogEncomendaPendenteView(ui.LayoutView):
             if not sucesso:
                 await interaction.followup.send("❌ Não foi possível confirmar a encomenda.", ephemeral=True)
                 return
-
-            ok_conf = await self.db.confirmar_reserva_encomenda(int(guild_id), str(produto_id), int(quantidade))
-            if not ok_conf:
-                await interaction.followup.send("⚠️ Aviso: não foi possível consumir o estoque reservado corretamente.", ephemeral=True)
 
             valor_total = float(preco_unit) * int(quantidade)
 
@@ -431,6 +460,9 @@ class VendasCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
+        # registra a view persistente do painel ao carregar o cog
+        self.bot.add_view(PainelVendasView(self.db))
+        self.bot.loop.create_task(self._rehydrate_encomendas_pendentes())
         print("✅ Cog de Vendas carregado com sucesso!")
 
     @app_commands.command(name="vendas", description="Abrir o painel do sistema de vendas")
@@ -440,6 +472,69 @@ class VendasCog(commands.Cog):
             return
         view = PainelVendasView(self.db)
         await interaction.response.send_message(view=view)
+
+    async def _rehydrate_encomendas_pendentes(self):
+        try:
+            await self.bot.wait_until_ready()
+            pendentes = await self.db.listar_encomendas_pendentes()
+            if not pendentes:
+                return
+
+            for encomenda_id, guild_id, user_id, message_id in pendentes:
+                try:
+                    dados = await self.db.get_encomenda_por_id(encomenda_id)
+                    if not dados:
+                        continue
+
+                    (
+                        _guild_id,
+                        _user_id,
+                        user_name,
+                        _produto_id,
+                        produto_nome,
+                        quantidade,
+                        preco_unit,
+                        cliente,
+                        status
+                    ) = dados
+                    if status != "pendente":
+                        continue
+
+                    canal_log_id = await self.db.get_canal_log(int(guild_id))
+                    if not canal_log_id:
+                        continue
+
+                    guild = self.bot.get_guild(int(guild_id))
+                    if not guild:
+                        continue
+
+                    canal = guild.get_channel(int(canal_log_id))
+                    if not canal:
+                        continue
+
+                    try:
+                        mensagem = await canal.fetch_message(int(message_id))
+                    except Exception:
+                        continue
+
+                    view = LogEncomendaPendenteView(
+                        db=self.db,
+                        encomenda_id=encomenda_id,
+                        dono_id=user_id,
+                        produto_nome=produto_nome,
+                        quantidade=quantidade,
+                        preco_unit=preco_unit,
+                        cliente=cliente or "Não informado",
+                        user_name=user_name
+                    )
+                    self.bot.add_view(view, message_id=int(message_id))
+                    await mensagem.edit(view=view)
+                except Exception as e:
+                    print(f"Erro ao reidratar encomenda #{encomenda_id}: {e}")
+                    traceback.print_exc()
+        except Exception as e:
+            print(f"Erro ao reidratar encomendas pendentes: {e}")
+            traceback.print_exc()
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(VendasCog(bot))

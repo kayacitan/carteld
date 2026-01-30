@@ -8,7 +8,7 @@ from database import Database
 
 class MetaView(ui.LayoutView):
     def __init__(self, db: Database):
-        super().__init__()
+        super().__init__(timeout=None)
         self.db = db
         
         # Container principal
