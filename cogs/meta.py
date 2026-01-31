@@ -4,7 +4,7 @@ from discord.ext import commands
 from datetime import datetime
 import traceback
 from database import Database
-from cogs.emoji import CHECK, X
+from utils.emojis import CHECK, X, USER, SETTINGS, LIST
 
 
 class MetaView(ui.LayoutView):
@@ -14,7 +14,7 @@ class MetaView(ui.LayoutView):
         
         # Container principal
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# 📊 Registre sua Meta'))
+        container.add_item(ui.TextDisplay(f'# {CHECK} Registre sua Meta'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
             'Mande uma foto da meta entregue e em qual baú ou para quem foi mandado'
@@ -128,7 +128,7 @@ class MetaView(ui.LayoutView):
             
             # Enviar mensagem de boas-vindas no canal
             container_boas_vindas = ui.Container()
-            container_boas_vindas.add_item(ui.TextDisplay(f'# 📊 Meta de {interaction.user.mention}'))
+            container_boas_vindas.add_item(ui.TextDisplay(f'# {USER} Meta de {interaction.user.mention}'))
             container_boas_vindas.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
             container_boas_vindas.add_item(ui.TextDisplay(
                 f'Olá {interaction.user.mention}!\n\n'
@@ -185,7 +185,7 @@ class AvaliacaoMetaView(ui.LayoutView):
         
         # Container
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# 📋 Avaliação de Meta'))
+        container.add_item(ui.TextDisplay(f'# {CHECK} Avaliação de Meta'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
             'Gerentes e administradores, avaliem a meta enviada acima.\n\n'
@@ -263,16 +263,16 @@ class AvaliacaoMetaView(ui.LayoutView):
                 if canal_log:
                     # Criar log da meta aprovada
                     container_log = ui.Container()
-                    container_log.add_item(ui.TextDisplay(f"# {CHECK} Meta Aprovada"))
+                    container_log.add_item(ui.TextDisplay(f"# {LIST} {CHECK} Meta Aprovada"))
                     container_log.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-                    container_log.add_item(ui.TextDisplay(f"**👤 Usuário:** {user.mention} (ID: {user.id})"))
+                    container_log.add_item(ui.TextDisplay(f"**{USER} Usuário:** {user.mention} (ID: {user.id})"))
                     container_log.add_item(ui.TextDisplay(f"**{CHECK} Aprovado por:** {interaction.user.mention}"))
-                    container_log.add_item(ui.TextDisplay(f"**🕒 Data:** {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"))
+                    container_log.add_item(ui.TextDisplay(f"**Data:** {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"))
                     container_log.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
                     
                     # Adicionar conteúdo da mensagem original
                     if self.mensagem_meta.content:
-                        container_log.add_item(ui.TextDisplay(f"**📝 Descrição:**\n{self.mensagem_meta.content}"))
+                        container_log.add_item(ui.TextDisplay(f"**Descrição:**\n{self.mensagem_meta.content}"))
                     
                     
                     view_log = ui.LayoutView()
@@ -301,7 +301,7 @@ class AvaliacaoMetaView(ui.LayoutView):
             # Notificar usuário
             try:
                 await user.send(
-                    f"🎉 **Parabéns!** Sua meta foi aprovada por {interaction.user.mention}!\n"
+                f"{CHECK} **Parabéns!** Sua meta foi aprovada por {interaction.user.mention}!\n"
                     f"Você recebeu o cargo de meta paga."
                 )
             except:
@@ -359,7 +359,7 @@ class AvaliacaoMetaView(ui.LayoutView):
             if user:
                 try:
                     await user.send(
-                        f"😔 Sua meta foi reprovada por {interaction.user.mention}.\n"
+                        f"{X} Sua meta foi reprovada por {interaction.user.mention}.\n"
                         f"Entre em contato com a administração para mais informações."
                     )
                 except:
@@ -459,7 +459,7 @@ class MetaCog(commands.Cog):
                 cargo_gerente = message.guild.get_role(config[1])
                 if cargo_gerente:
                     await message.channel.send(
-                        f"📢 {cargo_gerente.mention} - Nova meta enviada para avaliação!"
+                        f"{LIST} {SETTINGS} {cargo_gerente.mention} - Nova meta enviada para avaliação!"
                     )
             
         except Exception as e:

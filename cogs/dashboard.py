@@ -4,13 +4,13 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 import traceback
 from database import Database
-from cogs.emoji import CHECK, X, WALLET, CONTAINER
+from utils.emojis import CHECK, X, DIN, PIGGY, VENDAS, STORE, USER, PACKAGE, PACKAGE_CHECK, LIST, TOOL, SHIRT, TICKET
 
 
 PRODUTOS = {
-    "masterpick": {"nome": "Masterpick", "emoji": "🔧"},
-    "camisa_forca": {"nome": "Camisa de Força", "emoji": "👕"},
-    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": "🎫"},
+    "masterpick": {"nome": "Masterpick", "emoji": TOOL},
+    "camisa_forca": {"nome": "Camisa de Força", "emoji": SHIRT},
+    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": TICKET},
 }
 
 PAGES = {
@@ -145,7 +145,7 @@ class DashboardView(ui.LayoutView):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "Erro ao abrir a tela. Tente novamente.",
+                    f"{X} Erro ao abrir a tela. Tente novamente.",
                     ephemeral=True
                 )
             except Exception:
@@ -164,7 +164,7 @@ class DashboardView(ui.LayoutView):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "Erro ao abrir a tela. Tente novamente.",
+                    f"{X} Erro ao abrir a tela. Tente novamente.",
                     ephemeral=True
                 )
             except Exception:
@@ -183,7 +183,7 @@ class DashboardView(ui.LayoutView):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "Erro ao abrir a tela. Tente novamente.",
+                    f"{X} Erro ao abrir a tela. Tente novamente.",
                     ephemeral=True
                 )
             except Exception:
@@ -251,20 +251,20 @@ class DashboardView(ui.LayoutView):
             estoque_info[produto_id] = await self.db.get_estoque_produto(self.guild.id, produto_id)
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# 📊 Dashboard — {self.guild.name}"))
+        container.add_item(ui.TextDisplay(f"# {STORE} Dashboard — {self.guild.name}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         vendas_texto = (
-            f"**{WALLET} Vendas**\n"
-            f"• Hoje: {_fmt_money(total_hoje)}\n"
-            f"• Últimos 7 dias: {_fmt_money(total_semana)}"
+            f"**{VENDAS} Vendas**\n"
+            f"• Hoje: {DIN} {_fmt_money(total_hoje)}\n"
+            f"• Últimos 7 dias: {DIN} {_fmt_money(total_semana)}"
         )
         self._add_section(container, vendas_texto, self._nav_button("Ver", PAGES["VENDAS"]))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         fab_texto = (
-            f"**🏭 Fabricação**\n"
-            f"• Custo (7 dias): {_fmt_money(custo_fab_semana)}"
+            f"**{STORE} Fabricação**\n"
+            f"• Custo (7 dias): {DIN} {_fmt_money(custo_fab_semana)}"
         )
         self._add_section(container, fab_texto, self._nav_button("Ver", PAGES["FABRICACAO"]))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
@@ -275,11 +275,11 @@ class DashboardView(ui.LayoutView):
             estoque_linhas.append(
                 f"• {info['emoji']} **{info['nome']}**: {qtd} | disp {disp} | res {res}"
             )
-        estoque_texto = f"**{CONTAINER} Estoque**\n" + ("\n".join(estoque_linhas) if estoque_linhas else "Sem dados.")
+        estoque_texto = f"**{LIST} {PACKAGE} Estoque**\n" + ("\n".join(estoque_linhas) if estoque_linhas else "Sem dados.")
         self._add_section(container, estoque_texto, self._nav_button("Ver", PAGES["ESTOQUE"]))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        encomendas_texto = f"**{CONTAINER} Encomendas**\n• Pendentes: {len(pendentes)}"
+        encomendas_texto = f"**{LIST} {PACKAGE} Encomendas**\n• Pendentes: {len(pendentes)}"
         self._add_section(container, encomendas_texto, self._nav_button("Ver", PAGES["ENCOMENDAS"]))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
@@ -294,18 +294,18 @@ class DashboardView(ui.LayoutView):
         top_saldos_txt = "Sem dados."
         if top_saldos:
             top_saldos_txt = "\n".join(
-                [f"• {user}: {_fmt_money(saldo)}" for user, saldo in top_saldos]
+                [f"• {USER} {user}: {DIN} {_fmt_money(saldo)}" for user, saldo in top_saldos]
             )
         mov_txt = "Sem movimentos recentes."
         if movimentos:
             mov_txt = "\n".join(
-                [f"• {user} ({origem}): {_fmt_money(delta)} — {_fmt_dt(data)}"
+                [f"• {USER} {user} ({origem}): {DIN} {_fmt_money(delta)} — {_fmt_dt(data)}"
                  for user, origem, delta, _saldo, data in movimentos]
             )
         banco_texto = (
-            f"**{WALLET} Banco**\n"
-            f"Top saldos:\n{top_saldos_txt}\n"
-            f"Movimentos recentes:\n{mov_txt}"
+            f"**{PIGGY} Banco**\n"
+            f"{LIST} {PIGGY} Top saldos:\n{top_saldos_txt}\n"
+            f"{LIST} {USER} Movimentos recentes:\n{mov_txt}"
         )
         self._add_section(container, banco_texto, self._nav_button("Ver", PAGES["BANCO"]))
 
@@ -322,19 +322,19 @@ class DashboardView(ui.LayoutView):
         linhas = []
         for produto, qtd, total, comprador, data_venda, user_name in logs:
             linhas.append(
-                f"• {produto} x{qtd} — {_fmt_money(total)} — {comprador or 'Não informado'} — {user_name} — {_fmt_dt(data_venda)}"
+                f"• {produto} x{qtd} — {DIN} {_fmt_money(total)} — {USER} {comprador or 'Não informado'} — {USER} {user_name} — {_fmt_dt(data_venda)}"
             )
         lista = "\n".join(linhas) if linhas else "Nenhuma venda registrada."
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {WALLET} Vendas — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {VENDAS} Vendas — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
-            f"• Hoje: {_fmt_money(total_hoje)}\n"
-            f"• Últimos 7 dias: {_fmt_money(total_semana)}"
+            f"• Hoje: {DIN} {_fmt_money(total_hoje)}\n"
+            f"• Últimos 7 dias: {DIN} {_fmt_money(total_semana)}"
         ))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**Últimas 10 vendas:**\n{lista}"))
+        container.add_item(ui.TextDisplay(f"**{LIST} Últimas 10 vendas:**\n{lista}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(self._action_buttons())
         return container
@@ -347,23 +347,23 @@ class DashboardView(ui.LayoutView):
         linhas = []
         for produto, qtd, custo_total, data_fab, user_name in logs:
             linhas.append(
-                f"• {produto} x{qtd} — {_fmt_money(custo_total)} — {user_name} — {_fmt_dt(data_fab)}"
+                f"• {produto} x{qtd} — {DIN} {_fmt_money(custo_total)} — {USER} {user_name} — {_fmt_dt(data_fab)}"
             )
         lista = "\n".join(linhas) if linhas else "Nenhuma fabricação registrada."
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 🏭 Fabricação — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {STORE} Fabricação — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"• Custo (7 dias): {_fmt_money(custo_semana)}"))
+        container.add_item(ui.TextDisplay(f"• Custo (7 dias): {DIN} {_fmt_money(custo_semana)}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**Últimas 10 fabricações:**\n{lista}"))
+        container.add_item(ui.TextDisplay(f"**{LIST} Últimas 10 fabricações:**\n{lista}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(self._action_buttons())
         return container
 
     async def _build_estoque(self) -> ui.Container:
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {CONTAINER} Estoque — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {PACKAGE} Estoque — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         for produto_id, info in PRODUTOS.items():
@@ -387,7 +387,7 @@ class DashboardView(ui.LayoutView):
         if pendentes:
             pendentes_txt = "\n".join(
                 [
-                    f"• #{eid} {produto} x{qtd} — {cliente or 'Não informado'} — {user} — {_fmt_dt(criado)}"
+                    f"• #{eid} {produto} x{qtd} — {USER} {cliente or 'Não informado'} — {USER} {user} — {_fmt_dt(criado)}"
                     for eid, produto, qtd, _preco, cliente, user, criado in pendentes
                 ]
             )
@@ -396,17 +396,17 @@ class DashboardView(ui.LayoutView):
         if confirmadas:
             confirmadas_txt = "\n".join(
                 [
-                    f"• #{eid} {produto} x{qtd} — {cliente or 'Não informado'} — {user} — {_fmt_dt(confirmado)}"
+                    f"• #{eid} {produto} x{qtd} — {USER} {cliente or 'Não informado'} — {USER} {user} — {_fmt_dt(confirmado)}"
                     for eid, produto, qtd, _preco, cliente, user, confirmado in confirmadas
                 ]
             )
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {CONTAINER} Encomendas — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {PACKAGE} Encomendas — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**Pendentes:**\n{pendentes_txt}"))
+        container.add_item(ui.TextDisplay(f"**{LIST} Pendentes:**\n{pendentes_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**Confirmadas recentes:**\n{confirmadas_txt}"))
+        container.add_item(ui.TextDisplay(f"**{LIST} Confirmadas recentes:**\n{confirmadas_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(self._action_buttons())
         return container
@@ -432,23 +432,23 @@ class DashboardView(ui.LayoutView):
 
         top_txt = "Sem dados."
         if top_saldos:
-            top_txt = "\n".join([f"• {user}: {_fmt_money(saldo)}" for user, saldo in top_saldos])
+            top_txt = "\n".join([f"• {USER} {user}: {DIN} {_fmt_money(saldo)}" for user, saldo in top_saldos])
 
         mov_txt = "Sem movimentos recentes."
         if movimentos:
             mov_txt = "\n".join(
                 [
-                    f"• {user} ({origem}): {_fmt_money(delta)} — {_fmt_dt(data)}"
+                    f"• {USER} {user} ({origem}): {DIN} {_fmt_money(delta)} — {_fmt_dt(data)}"
                     for user, origem, delta, _saldo, data in movimentos
                 ]
             )
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {WALLET} Banco — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {PIGGY} Banco — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**Top saldos:**\n{top_txt}"))
+        container.add_item(ui.TextDisplay(f"**{LIST} {PIGGY} Top saldos:**\n{top_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**Movimentos recentes:**\n{mov_txt}"))
+        container.add_item(ui.TextDisplay(f"**{LIST} {USER} Movimentos recentes:**\n{mov_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(self._action_buttons())
         return container

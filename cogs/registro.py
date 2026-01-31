@@ -3,10 +3,10 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from cogs.emoji import CHECK
+from utils.emojis import CHECK, USER, LIST
 
 # --- O MODAL DE PREENCHIMENTO ---
-class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
+class ModalRegistro(ui.Modal, title=f'{USER} Complete seu Registro'):
     def __init__(self, db: Database):
         super().__init__()
         self.db = db
@@ -71,7 +71,7 @@ class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
             )
             
             embed = discord.Embed(
-                title="Nova Solicitação de Registro",
+                title=f"{LIST} Nova Solicitação de Registro",
                 color=discord.Color.yellow(),
                 timestamp=discord.utils.utcnow()
             )
@@ -204,7 +204,7 @@ class AprovacaoView(ui.View):
             # Atualiza o embed
             embed = interaction.message.embeds[0]
             embed.color = discord.Color.green()
-            embed.title = f"{CHECK} Registro Aprovado"
+            embed.title = f"{LIST} {CHECK} Registro Aprovado"
             embed.add_field(
                 name="Aprovado por", 
                 value=interaction.user.mention, 
@@ -228,7 +228,7 @@ class AprovacaoView(ui.View):
             # Notifica o usuário
             try:
                 await user.send(
-                    f"🎉 **Parabéns!** Seu registro foi aprovado por {interaction.user.mention}!\n"
+                    f"{CHECK} **Parabéns!** Seu registro foi aprovado por {interaction.user.mention}!\n"
                     f"Você agora tem acesso completo ao servidor."
                 )
             except discord.Forbidden:
@@ -280,7 +280,7 @@ class AprovacaoView(ui.View):
             # Atualiza o embed
             embed = interaction.message.embeds[0]
             embed.color = discord.Color.red()
-            embed.title = "Registro Negado"
+            embed.title = f"{LIST} Registro Negado"
             embed.add_field(
                 name="Negado por", 
                 value=interaction.user.mention, 
@@ -358,7 +358,7 @@ class RegistroView(ui.LayoutView):
             cargo = interaction.guild.get_role(int(cargo_membro_id)) if cargo_membro_id else None
             if cargo and cargo in interaction.user.roles:
                 await interaction.response.send_message(
-                    "Ei, você já está registrado! 😎", 
+                    f"{CHECK} Ei, você já está registrado!",
                     ephemeral=True
                 )
                 return

@@ -5,7 +5,7 @@ from datetime import datetime
 import io
 import traceback
 from database import Database
-from cogs.emoji import CHECK, X, WALLET, CONFIG
+from utils.emojis import CHECK, X, DIN, PIGGY, SETTINGS, USER, LIST
 
 
 def _fmt_money(v: float) -> str:
@@ -14,7 +14,7 @@ def _fmt_money(v: float) -> str:
 
 class EditarSaldoModal(ui.Modal):
     def __init__(self, db: Database, alvo: discord.Member):
-        super().__init__(title=f"{WALLET} Editar Saldo")
+        super().__init__(title=f"{PIGGY} Editar Saldo")
         self.db = db
         self.alvo = alvo
 
@@ -55,7 +55,7 @@ class EditarSaldoModal(ui.Modal):
                 ref_id=None
             )
             await interaction.response.send_message(
-                f"{CHECK} Saldo atualizado.\n{WALLET} Novo saldo: **{_fmt_money(novo_saldo)}**",
+                f"{CHECK} Saldo atualizado.\n{PIGGY} Novo saldo: **{_fmt_money(novo_saldo)}**",
                 ephemeral=True
             )
         except Exception as e:
@@ -74,15 +74,15 @@ class BancoView(ui.LayoutView):
         self.alvo = alvo
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {WALLET} Banco do Usuário"))
+        container.add_item(ui.TextDisplay(f"# {PIGGY} Banco do Usuário"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**Usuário:** {alvo.mention}"))
-        container.add_item(ui.TextDisplay(f"**{WALLET} Caixa (atual):** {_fmt_money(saldo)}"))
+        container.add_item(ui.TextDisplay(f"**{USER} Usuário:** {alvo.mention}"))
+        container.add_item(ui.TextDisplay(f"**{PIGGY} Caixa (atual):** {_fmt_money(saldo)}"))
         container.add_item(ui.TextDisplay(f"**Última fabricação:** {_fmt_money(ult_fab) if ult_fab is not None else '-'}"))
         container.add_item(ui.TextDisplay(f"**Última venda:** {_fmt_money(ult_venda) if ult_venda is not None else '-'}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        btn_editar = ui.Button(label="Editar saldo", style=discord.ButtonStyle.secondary, emoji=CONFIG)
+        btn_editar = ui.Button(label="Editar saldo", style=discord.ButtonStyle.secondary, emoji=SETTINGS)
         btn_editar.callback = self.editar_saldo
 
         btn_transcrever = ui.Button(label="Transcrever", style=discord.ButtonStyle.secondary)
@@ -103,27 +103,27 @@ class BancoView(ui.LayoutView):
             extrato = await self.db.get_extrato_banco(interaction.guild.id, self.alvo.id, limite=50)
 
             linhas = []
-            linhas.append(f"TRANSCRIPT BANCO - {self.alvo} (ID: {self.alvo.id})")
+            linhas.append(f"{LIST} TRANSCRIPT BANCO - {self.alvo} (ID: {self.alvo.id})")
             linhas.append(f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
             linhas.append("")
             linhas.append(f"Saldo atual: {_fmt_money(saldo)}")
             linhas.append(f"Última fabricação: {_fmt_money(ult_fab) if ult_fab is not None else '—'}")
             linhas.append(f"Última venda: {_fmt_money(ult_venda) if ult_venda is not None else '—'}")
             linhas.append("")
-            linhas.append("=== EXTRATO (últimos movimentos) ===")
+            linhas.append(f"=== {LIST} EXTRATO (últimos movimentos) ===")
             for origem, delta, antes, depois, motivo, ref_tipo, ref_id, criado_em in extrato:
                 linhas.append(f"- [{criado_em}] {origem.upper()} | Δ {_fmt_money(delta)} | {_fmt_money(antes)} -> {_fmt_money(depois)}"
                               + (f" | motivo: {motivo}" if motivo else "")
                               + (f" | ref: {ref_tipo}#{ref_id}" if ref_tipo and ref_id else ""))
 
             linhas.append("")
-            linhas.append("=== ÚLTIMAS FABRICAÇÕES ===")
+            linhas.append(f"=== {LIST} ÚLTIMAS FABRICAÇÕES ===")
             for produto_nome, quantidade, custo_total, data_fabricacao, materiais in logs_fab:
                 linhas.append(f"- [{data_fabricacao}] {produto_nome} x{quantidade} | custo: {_fmt_money(custo_total)}")
                 linhas.append(f"  materiais: {materiais}")
 
             linhas.append("")
-            linhas.append("=== ÚLTIMAS VENDAS ===")
+            linhas.append(f"=== {LIST} ÚLTIMAS VENDAS ===")
             for produto_nome, quantidade, valor_total, comprador, data_venda in logs_vendas:
                 linhas.append(f"- [{data_venda}] {produto_nome} x{quantidade} | total: {_fmt_money(valor_total)} | para: {comprador or 'Não informado'}")
 
@@ -146,7 +146,7 @@ class BancoCog(commands.Cog):
         self.db = Database()
         print("Cog de Banco carregado com sucesso!")
 
-    @app_commands.command(name="banco", description="Ver banco pessoal e histórico")
+    @app_commands.command(name="banco", description=f"{LIST} Ver banco pessoal e histórico")
     async def banco(self, interaction: discord.Interaction, usuario: discord.Member = None):
         alvo = usuario or interaction.user
         saldo, ult_fab, ult_venda = await self.db.get_banco_usuario(interaction.guild.id, alvo.id, str(alvo))

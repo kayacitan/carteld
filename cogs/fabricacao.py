@@ -4,14 +4,14 @@ from discord.ext import commands
 from datetime import datetime
 import traceback
 from database import Database
-from cogs.emoji import CHECK, X, WALLET, CONTAINER
+from utils.emojis import CHECK, X, DIN, PIGGY, STORE, USER, CONTAINER, SETTINGS, PACKAGE, LIST, TOOL, SHIRT, TICKET
 
 # Definição dos produtos
 PRODUTOS = {
     "masterpick": {
         "nome": "Masterpick",
         "custo": 500,
-        "emoji": "🔧",
+        "emoji": TOOL,
         "materiais": {
             "Alumínio": 4,
             "Ferro": 4,
@@ -23,7 +23,7 @@ PRODUTOS = {
     "camisa_forca": {
         "nome": "Camisa de Força",
         "custo": 1950,
-        "emoji": "👕",
+        "emoji": SHIRT,
         "materiais": {
             "Tecido": 8
         }
@@ -31,7 +31,7 @@ PRODUTOS = {
     "ticket_corrida": {
         "nome": "Ticket de Corrida",
         "custo": 360,
-        "emoji": "🎫",
+        "emoji": TICKET,
         "materiais": {
             "Folha de Papel": 1,
             "Lata de Tinta": 1,
@@ -42,7 +42,7 @@ PRODUTOS = {
 
 
 # --- MODAL PARA QUANTIDADE ---
-class QuantidadeModal(ui.Modal, title=f'{CONTAINER} Quantidade de Fabricação'):
+class QuantidadeModal(ui.Modal, title=f'{STORE} Quantidade de Fabricação'):
     def __init__(self, produto_id: str, produto: dict, db: Database):
         super().__init__()
         self.produto_id = produto_id
@@ -133,18 +133,18 @@ class ConfirmacaoView(ui.LayoutView):
 
         # Criar container de confirmação
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# 📋 Confirmação de Fabricação'))
+        container.add_item(ui.TextDisplay(f'# {STORE} Confirmação de Fabricação'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Informações do produto
-        container.add_item(ui.TextDisplay(f"**{CONTAINER} Produto:** {self.produto['nome']}"))
-        container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {self.quantidade} unidade(s)"))
+        container.add_item(ui.TextDisplay(f"**{PACKAGE} Produto:** {self.produto['nome']}"))
+        container.add_item(ui.TextDisplay(f"**Quantidade:** {self.quantidade} unidade(s)"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Custo total
         custo_formatado = f"R$ {self.custo_total:,.2f}".replace(',', '.')
-        container.add_item(ui.TextDisplay(f"**{WALLET} Custo Total:** {custo_formatado}"))
+        container.add_item(ui.TextDisplay(f"**{DIN} Custo Total:** {custo_formatado}"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
@@ -195,7 +195,7 @@ class ConfirmacaoView(ui.LayoutView):
 
             if canal_log_id is None:
                 await interaction.followup.send(
-                    "⚠️ Erro: Canal de logs não configurado! Use `/config` para configurar.",
+                    f"{X} Canal de logs não configurado! Use {SETTINGS} `/config` para configurar.",
                     ephemeral=True
                 )
                 return
@@ -204,7 +204,7 @@ class ConfirmacaoView(ui.LayoutView):
 
             if canal_logs is None:
                 await interaction.followup.send(
-                    "⚠️ Erro: Canal de logs não encontrado! Verifique a configuração.",
+                    f"{X} Canal de logs não encontrado! Verifique a configuração.",
                     ephemeral=True
                 )
                 return
@@ -258,7 +258,7 @@ class ConfirmacaoView(ui.LayoutView):
 
         except discord.Forbidden:
             await interaction.followup.send(
-                "⚠️ Não tenho permissão para enviar mensagens no canal de logs!",
+                f"{X} Não tenho permissão para enviar mensagens no canal de logs!",
                 ephemeral=True
             )
         except Exception as e:
@@ -296,28 +296,28 @@ class LogFabricacaoView(ui.LayoutView):
         super().__init__()
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# 🏭 Nova Fabricação Realizada'))
+        container.add_item(ui.TextDisplay(f'# {STORE} Nova Fabricação Realizada'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        container.add_item(ui.TextDisplay(f"**👤 Usuário:** {usuario.mention} (ID: {usuario.id})"))
-        container.add_item(ui.TextDisplay(f"**{CONTAINER} Produto:** {produto['nome']}"))
-        container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {quantidade} unidade(s)"))
+        container.add_item(ui.TextDisplay(f"**{USER} Usuário:** {usuario.mention} (ID: {usuario.id})"))
+        container.add_item(ui.TextDisplay(f"**{PACKAGE} Produto:** {produto['nome']}"))
+        container.add_item(ui.TextDisplay(f"**Quantidade:** {quantidade} unidade(s)"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         custo_formatado = f"R$ {custo_total:,.2f}".replace(',', '.')
-        container.add_item(ui.TextDisplay(f"**{WALLET} Custo Total:** {custo_formatado}"))
+        container.add_item(ui.TextDisplay(f"**{DIN} Custo Total:** {custo_formatado}"))
 
         if saldo_atual is not None:
             saldo_formatado = f"R$ {float(saldo_atual):,.2f}".replace(',', '.')
-            container.add_item(ui.TextDisplay(f"**💼 Saldo em caixa:** {saldo_formatado}"))
+            container.add_item(ui.TextDisplay(f"**{PIGGY} Saldo em caixa:** {saldo_formatado}"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f"**{CONTAINER} Materiais Utilizados:**\n{materiais}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         data_hora = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
-        container.add_item(ui.TextDisplay(f"**🕒 Data e Hora:** {data_hora}"))
+        container.add_item(ui.TextDisplay(f"**Data e Hora:** {data_hora}"))
 
         self.add_item(container)
 
@@ -329,7 +329,7 @@ class FabricacaoView(ui.LayoutView):
         self.db = db
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# 🏭 Registro de Fabricação'))
+        container.add_item(ui.TextDisplay(f'# {LIST} {STORE} Registro de Fabricação'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay('Selecione o produto que deseja fabricar abaixo:'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
@@ -338,8 +338,8 @@ class FabricacaoView(ui.LayoutView):
             materiais_texto = "\n".join([f"• {mat}: {qtd}" for mat, qtd in info['materiais'].items()])
             container.add_item(ui.TextDisplay(f"**{info['emoji']} {info['nome']}**"))
             receita_info = (
-                f"{WALLET} Custo: R$ {info['custo']:,.2f}".replace(',', '.') + "\n"
-                f"📋 Materiais:\n{materiais_texto}"
+                f"{DIN} Custo: R$ {info['custo']:,.2f}".replace(',', '.') + "\n"
+                f"{CONTAINER} Materiais:\n{materiais_texto}"
             )
             container.add_item(ui.TextDisplay(receita_info))
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
@@ -397,7 +397,7 @@ class FabricacaoCog(commands.Cog):
 
             if canal_log_id is None:
                 await interaction.response.send_message(
-                    "⚠️ Canal de logs não configurado! Use `/config` para configurar primeiro.",
+                    f"{X} Canal de logs não configurado! Use {SETTINGS} `/config` para configurar primeiro.",
                     ephemeral=True
                 )
                 return

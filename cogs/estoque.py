@@ -3,12 +3,12 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from cogs.emoji import CONTAINER, X
+from utils.emojis import STORE, X, PACKAGE, LIST, TOOL, SHIRT, TICKET
 
 PRODUTOS = {
-    "masterpick": {"nome": "Masterpick", "emoji": "🔧"},
-    "camisa_forca": {"nome": "Camisa de Força", "emoji": "👕"},
-    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": "🎫"},
+    "masterpick": {"nome": "Masterpick", "emoji": TOOL},
+    "camisa_forca": {"nome": "Camisa de Força", "emoji": SHIRT},
+    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": TICKET},
 }
 
 
@@ -17,7 +17,7 @@ class EstoqueView(ui.LayoutView):
         super().__init__()
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {CONTAINER} Estoque do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {LIST} {PACKAGE} Estoque do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         for produto_id, info in PRODUTOS.items():

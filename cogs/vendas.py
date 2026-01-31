@@ -4,13 +4,13 @@ from discord.ext import commands
 from datetime import datetime
 import traceback
 from database import Database
-from cogs.emoji import CHECK, X, WALLET, CONTAINER
+from utils.emojis import CHECK, X, DIN, PIGGY, VENDAS, STORE, USER, SETTINGS, PACKAGE, PACKAGE_CHECK, LIST, TOOL, SHIRT, TICKET
 
 
 PRODUTOS = {
-    "masterpick": {"nome": "Masterpick", "emoji": "🔧", "preco_unit": 2000.00},
-    "camisa_forca": {"nome": "Camisa de Força", "emoji": "👕", "preco_unit": 6000.00},
-    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": "🎫", "preco_unit": 1000.00},
+    "masterpick": {"nome": "Masterpick", "emoji": TOOL, "preco_unit": 2000.00},
+    "camisa_forca": {"nome": "Camisa de Força", "emoji": SHIRT, "preco_unit": 6000.00},
+    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": TICKET, "preco_unit": 1000.00},
 }
 
 
@@ -56,7 +56,7 @@ class VendaEncomendaModal(ui.Modal):
         self.modo = modo
         self.produto_id = produto_id
 
-        titulo = f"{WALLET} Registrar Venda" if modo == "venda" else f"{CONTAINER} Registrar Encomenda"
+        titulo = f"{VENDAS} Registrar Venda" if modo == "venda" else f"{PACKAGE} Registrar Encomenda"
         super().__init__(title=titulo)
 
         self.quantidade = ui.TextInput(
@@ -93,7 +93,7 @@ class VendaEncomendaModal(ui.Modal):
             canal_log_id = await self.db.get_canal_log(interaction.guild.id)
             if not canal_log_id:
                 await interaction.response.send_message(
-                    "⚠️ Canal de logs não configurado. Use `/config` para configurar primeiro.",
+                    f"{X} Canal de logs não configurado. Use {SETTINGS} `/config` para configurar primeiro.",
                     ephemeral=True
                 )
                 return
@@ -101,7 +101,7 @@ class VendaEncomendaModal(ui.Modal):
             canal_logs = interaction.guild.get_channel(canal_log_id)
             if not canal_logs:
                 await interaction.response.send_message(
-                    "⚠️ Canal de logs não encontrado. Verifique `/config`.",
+                    f"{X} Canal de logs não encontrado. Verifique {SETTINGS} `/config`.",
                     ephemeral=True
                 )
                 return
@@ -131,7 +131,7 @@ class VendaEncomendaModal(ui.Modal):
                 )
                 if not ok_estoque:
                     await interaction.response.send_message(
-                        "Erro ao consumir estoque. Tente novamente.",
+                        f"{X} Erro ao consumir estoque. Tente novamente.",
                         ephemeral=True
                     )
                     return
@@ -226,7 +226,7 @@ class EscolherProdutoView(ui.LayoutView):
         self.modo = modo
 
         container = ui.Container()
-        titulo = f"{WALLET} Registrar Venda" if modo == "venda" else f"{CONTAINER} Registrar Encomenda"
+        titulo = f"{VENDAS} Registrar Venda" if modo == "venda" else f"{PACKAGE} Registrar Encomenda"
 
         container.add_item(ui.TextDisplay(f"# {titulo}"))
         container.add_item(ui.TextDisplay("Selecione o produto abaixo:"))
@@ -236,7 +236,7 @@ class EscolherProdutoView(ui.LayoutView):
             preco = info["preco_unit"]
             container.add_item(ui.TextDisplay(
                 f"## {info['emoji']} {info['nome']}\n"
-                f"{WALLET} Valor unitário: {_fmt_money(preco)}"
+                f"{DIN} Valor unitário: {_fmt_money(preco)}"
             ))
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
@@ -269,7 +269,7 @@ class PainelVendasView(ui.LayoutView):
         self.db = db
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 🧾 Registro de Vendas"))
+        container.add_item(ui.TextDisplay(f"# {LIST} {VENDAS} Registro de Vendas"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay("Escolha uma opção abaixo:"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
@@ -277,32 +277,34 @@ class PainelVendasView(ui.LayoutView):
         btn_venda = ui.Button(
             label="Registrar Venda",
             style=discord.ButtonStyle.secondary,
-            custom_id="painel_vendas:registrar_venda"
+            custom_id="painel_vendas:registrar_venda",
+            emoji=VENDAS
         )
         btn_venda.callback = self.abrir_venda
 
         btn_encomenda = ui.Button(
             label="Registrar Encomenda",
             style=discord.ButtonStyle.secondary,
-            custom_id="painel_vendas:registrar_encomenda"
+            custom_id="painel_vendas:registrar_encomenda",
+            emoji=PACKAGE
         )
         btn_encomenda.callback = self.abrir_encomenda
 
         try:
             container.add_item(ui.Section(
-                ui.TextDisplay("• **Registrar Venda**\nRegistra **venda imediata** e envia para o canal de logs, registre com **atenção!**"),
+                ui.TextDisplay(f"• **{VENDAS} Registrar Venda**\nRegistra **venda imediata** e envia para o canal de logs, registre com **atenção!**"),
                 accessory=btn_venda
             ))
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
             container.add_item(ui.Section(
-                ui.TextDisplay("• **Registrar Encomenda**\nCria **ENCOMENDA** pendente e permite confirmar entrega mais tarde, registre com **atenção!**"),
+                ui.TextDisplay(f"• **{PACKAGE} Registrar Encomenda**\nCria **ENCOMENDA** pendente e permite confirmar entrega mais tarde, registre com **atenção!**"),
                 accessory=btn_encomenda
             ))
         except Exception:
-            container.add_item(ui.TextDisplay("• **Registrar Venda**\nRegistra **venda imediata** e envia para o canal de logs, registre com **atenção!**"))
+            container.add_item(ui.TextDisplay(f"• **{VENDAS} Registrar Venda**\nRegistra **venda imediata** e envia para o canal de logs, registre com **atenção!**"))
             container.add_item(ui.ActionRow(btn_venda))
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-            container.add_item(ui.TextDisplay("• **Registrar Encomenda**\nCria **ENCOMENDA** pendente e permite confirmar entrega mais tarde, registre com **atenção!**"))
+            container.add_item(ui.TextDisplay(f"• **{PACKAGE} Registrar Encomenda**\nCria **ENCOMENDA** pendente e permite confirmar entrega mais tarde, registre com **atenção!**"))
             container.add_item(ui.ActionRow(btn_encomenda))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
@@ -328,25 +330,25 @@ class PainelVendasView(ui.LayoutView):
 class LogVendaView(ui.LayoutView):
     def __init__(self, usuario: discord.Member, produto_nome: str, quantidade: int, preco_unit: float,
                  valor_total: float, comprador: str, saldo_atual: float | None = None,
-                 titulo: str = f"{WALLET} Venda Registrada"):
+                 titulo: str = f"{LIST} {VENDAS} Venda Registrada"):
         super().__init__()
 
         container = ui.Container()
         container.add_item(ui.TextDisplay(f"# {titulo}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(ui.TextDisplay(f"**👤 Vendedor:** {usuario.mention} (ID: {usuario.id})"))
-        container.add_item(ui.TextDisplay(f"**{CONTAINER} Produto:** {produto_nome}"))
-        container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {quantidade}"))
-        container.add_item(ui.TextDisplay(f"**💵 Valor unitário:** {_fmt_money(preco_unit)}"))
-        container.add_item(ui.TextDisplay(f"**{WALLET} Total:** {_fmt_money(valor_total)}"))
-        container.add_item(ui.TextDisplay(f"**🧑 Comprador:** {comprador}"))
+        container.add_item(ui.TextDisplay(f"**{USER} Vendedor:** {usuario.mention} (ID: {usuario.id})"))
+        container.add_item(ui.TextDisplay(f"**{PACKAGE} Produto:** {produto_nome}"))
+        container.add_item(ui.TextDisplay(f"**Quantidade:** {quantidade}"))
+        container.add_item(ui.TextDisplay(f"**{DIN} Valor unitário:** {_fmt_money(preco_unit)}"))
+        container.add_item(ui.TextDisplay(f"**{DIN} Total:** {_fmt_money(valor_total)}"))
+        container.add_item(ui.TextDisplay(f"**{USER} Comprador:** {comprador}"))
 
         if saldo_atual is not None:
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-            container.add_item(ui.TextDisplay(f"**🏦 Saldo atual do vendedor:** {_fmt_money(saldo_atual)}"))
+            container.add_item(ui.TextDisplay(f"**{PIGGY} Saldo atual do vendedor:** {_fmt_money(saldo_atual)}"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(ui.TextDisplay(f"**🕒 Data:** {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"))
+        container.add_item(ui.TextDisplay(f"**Data:** {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"))
 
         self.add_item(container)
 
@@ -368,15 +370,15 @@ class LogEncomendaPendenteView(ui.LayoutView):
         self.user_id = int(user_id)
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay('# Encomenda Pendente'))
+        container.add_item(ui.TextDisplay(f'# {LIST} {PACKAGE} Encomenda Pendente'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f'**ID da encomenda:** #{self.encomenda_id}'))
-        container.add_item(ui.TextDisplay(f'**Vendedor:** <@{self.user_id}> (ID: {self.user_id})'))
-        container.add_item(ui.TextDisplay(f'**Produto:** {self.produto_nome}'))
+        container.add_item(ui.TextDisplay(f'**{USER} Vendedor:** <@{self.user_id}> (ID: {self.user_id})'))
+        container.add_item(ui.TextDisplay(f'**{PACKAGE} Produto:** {self.produto_nome}'))
         container.add_item(ui.TextDisplay(f'**Quantidade:** {self.quantidade}'))
-        container.add_item(ui.TextDisplay(f'**Valor unitario:** {_fmt_money(self.preco_unit)}'))
-        container.add_item(ui.TextDisplay(f'**Total:** {_fmt_money(self.preco_unit * self.quantidade)}'))
-        container.add_item(ui.TextDisplay(f'**Comprador:** {self.cliente or "Nao informado"}'))
+        container.add_item(ui.TextDisplay(f'**{DIN} Valor unitario:** {_fmt_money(self.preco_unit)}'))
+        container.add_item(ui.TextDisplay(f'**{DIN} Total:** {_fmt_money(self.preco_unit * self.quantidade)}'))
+        container.add_item(ui.TextDisplay(f'**{USER} Comprador:** {self.cliente or "Nao informado"}'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f'**Data:** {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
@@ -386,7 +388,8 @@ class LogEncomendaPendenteView(ui.LayoutView):
         self.btn_confirmar = ui.Button(
             label='Confirmar Entrega',
             style=discord.ButtonStyle.success,
-            custom_id='encomenda_confirmar'
+            custom_id='encomenda_confirmar',
+            emoji=CHECK
         )
         self.btn_confirmar.callback = self.confirmar_entrega
         container.add_item(ui.ActionRow(self.btn_confirmar))
@@ -413,7 +416,7 @@ class LogEncomendaPendenteView(ui.LayoutView):
 
             guild_id, user_id, user_name, produto_id, produto_nome, quantidade, preco_unit, cliente, status = dados
             if status != "pendente":
-                await interaction.followup.send("⚠️ Essa encomenda já foi confirmada ou não está pendente.", ephemeral=True)
+                await interaction.followup.send(f"{X} Essa encomenda já foi confirmada ou não está pendente.", ephemeral=True)
                 return
 
             sucesso = await self.db.confirmar_encomenda(self.encomenda_id, confirmado_por_id=interaction.user.id)
@@ -442,7 +445,7 @@ class LogEncomendaPendenteView(ui.LayoutView):
                 valor_total=float(valor_total),
                 comprador=str(cliente or "Não informado"),
                 saldo_atual=novo_saldo,
-                titulo=f"{CONTAINER} Encomenda Entregue"
+                titulo=f"{LIST} {PACKAGE_CHECK} Encomenda Entregue"
             )
 
             await interaction.message.edit(view=log_final)

@@ -3,7 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from cogs.emoji import CHECK, X, WALLET, CONFIG
+from utils.emojis import CHECK, X, SETTINGS, VENDAS, STORE, USER, LIST
 
 
 class ConfigView(ui.LayoutView):
@@ -12,14 +12,14 @@ class ConfigView(ui.LayoutView):
         self.db = db
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {CONFIG} Configuração do Bot"))
+        container.add_item(ui.TextDisplay(f"# {SETTINGS} Configuração do Bot"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Selecione canais e cargos abaixo."))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         # Canal de logs (fabricação/vendas/encomendas/banco)
         self.sel_canal_logs = ui.ChannelSelect(
-            placeholder="📢 Selecionar canal de logs (geral)",
+            placeholder=f"{LIST} {SETTINGS} Selecionar canal de logs (geral)",
             channel_types=[discord.ChannelType.text],
             min_values=1,
             max_values=1
@@ -29,7 +29,7 @@ class ConfigView(ui.LayoutView):
 
         # Canal log metas (mantendo teu sistema meta)
         self.sel_canal_meta = ui.ChannelSelect(
-            placeholder="🏁 Selecionar canal de logs (meta)",
+            placeholder=f"{LIST} {SETTINGS} Selecionar canal de logs (meta)",
             channel_types=[discord.ChannelType.text],
             min_values=1,
             max_values=1
@@ -42,7 +42,7 @@ class ConfigView(ui.LayoutView):
 
         # Cargo gerente (já existia no meta/config)
         self.sel_cargo_gerente = ui.RoleSelect(
-            placeholder="👑 Selecionar cargo de gerente",
+            placeholder=f"{SETTINGS} Selecionar cargo de gerente",
             min_values=1,
             max_values=1
         )
@@ -60,7 +60,7 @@ class ConfigView(ui.LayoutView):
 
         # Novo: cargo vendedor
         self.sel_cargo_vendedor = ui.RoleSelect(
-            placeholder=f"{WALLET} Selecionar cargo de vendedor",
+            placeholder=f"{VENDAS} Selecionar cargo de vendedor",
             min_values=1,
             max_values=1
         )
@@ -68,7 +68,7 @@ class ConfigView(ui.LayoutView):
         container.add_item(ui.ActionRow(self.sel_cargo_vendedor))
 
         self.sel_cargo_fabricante = ui.RoleSelect(
-            placeholder="🏭 Selecionar cargo de fabricante",
+            placeholder=f"{STORE} Selecionar cargo de fabricante",
             min_values=1,
             max_values=1
         )
@@ -77,7 +77,7 @@ class ConfigView(ui.LayoutView):
 
         # Cargos boas-vindas
         self.sel_cargo_membro = ui.RoleSelect(
-            placeholder="👤 Selecionar cargo de membro",
+            placeholder=f"{USER} Selecionar cargo de membro",
             min_values=1,
             max_values=1
         )
@@ -85,7 +85,7 @@ class ConfigView(ui.LayoutView):
         container.add_item(ui.ActionRow(self.sel_cargo_membro))
 
         self.sel_cargo_morador = ui.RoleSelect(
-            placeholder="🏠 Selecionar cargo de morador",
+            placeholder=f"{USER} Selecionar cargo de morador",
             min_values=1,
             max_values=1
         )
@@ -99,7 +99,7 @@ class ConfigView(ui.LayoutView):
             canal = self.sel_canal_logs.values[0]
             ok = await self.db.set_canal_log(interaction.guild.id, canal.id)
             await interaction.response.send_message(
-                f"{CHECK} Canal de logs atualizado!" if ok else f"{X} Erro ao salvar canal de logs.",
+                f"{LIST} {CHECK} Canal de logs atualizado!" if ok else f"{X} Erro ao salvar canal de logs.",
                 ephemeral=True
             )
         except Exception as e:
@@ -112,7 +112,7 @@ class ConfigView(ui.LayoutView):
             canal = self.sel_canal_meta.values[0]
             ok = await self.db.set_config_meta(interaction.guild.id, canal_log_meta_id=canal.id)
             await interaction.response.send_message(
-                f"{CHECK} Canal de log de meta atualizado!" if ok else f"{X} Erro ao salvar canal de meta.",
+                f"{LIST} {CHECK} Canal de log de meta atualizado!" if ok else f"{X} Erro ao salvar canal de meta.",
                 ephemeral=True
             )
         except Exception as e:
@@ -125,7 +125,7 @@ class ConfigView(ui.LayoutView):
             cargo = self.sel_cargo_gerente.values[0]
             ok = await self.db.set_config_meta(interaction.guild.id, cargo_gerente_id=cargo.id)
             await interaction.response.send_message(
-                f"{CHECK} Cargo de gerente atualizado!" if ok else f"{X} Erro ao salvar cargo gerente.",
+                f"{LIST} {CHECK} Cargo de gerente atualizado!" if ok else f"{X} Erro ao salvar cargo gerente.",
                 ephemeral=True
             )
         except Exception as e:
@@ -138,7 +138,7 @@ class ConfigView(ui.LayoutView):
             cargo = self.sel_cargo_meta.values[0]
             ok = await self.db.set_config_meta(interaction.guild.id, cargo_meta_paga_id=cargo.id)
             await interaction.response.send_message(
-                f"{CHECK} Cargo de meta paga atualizado!" if ok else f"{X} Erro ao salvar cargo meta paga.",
+                f"{LIST} {CHECK} Cargo de meta paga atualizado!" if ok else f"{X} Erro ao salvar cargo meta paga.",
                 ephemeral=True
             )
         except Exception as e:
@@ -151,7 +151,7 @@ class ConfigView(ui.LayoutView):
             cargo = self.sel_cargo_vendedor.values[0]
             ok = await self.db.set_cargos_sistema(interaction.guild.id, cargo_vendedor_id=cargo.id)
             await interaction.response.send_message(
-                f"{CHECK} Cargo de vendedor atualizado!" if ok else f"{X} Erro ao salvar cargo vendedor.",
+                f"{LIST} {CHECK} Cargo de vendedor atualizado!" if ok else f"{X} Erro ao salvar cargo vendedor.",
                 ephemeral=True
             )
         except Exception as e:
@@ -164,7 +164,7 @@ class ConfigView(ui.LayoutView):
             cargo = self.sel_cargo_fabricante.values[0]
             ok = await self.db.set_cargos_sistema(interaction.guild.id, cargo_fabricante_id=cargo.id)
             await interaction.response.send_message(
-                f"{CHECK} Cargo de fabricante atualizado!" if ok else f"{X} Erro ao salvar cargo fabricante.",
+                f"{LIST} {CHECK} Cargo de fabricante atualizado!" if ok else f"{X} Erro ao salvar cargo fabricante.",
                 ephemeral=True
             )
         except Exception as e:
@@ -177,7 +177,7 @@ class ConfigView(ui.LayoutView):
             cargo = self.sel_cargo_membro.values[0]
             ok = await self.db.set_cargos_boasvindas(interaction.guild.id, cargo_membro_id=cargo.id)
             await interaction.response.send_message(
-                f"{CHECK} Cargo de membro atualizado!" if ok else f"{X} Erro ao salvar cargo de membro.",
+                f"{LIST} {CHECK} Cargo de membro atualizado!" if ok else f"{X} Erro ao salvar cargo de membro.",
                 ephemeral=True
             )
         except Exception as e:
@@ -190,7 +190,7 @@ class ConfigView(ui.LayoutView):
             cargo = self.sel_cargo_morador.values[0]
             ok = await self.db.set_cargos_boasvindas(interaction.guild.id, cargo_morador_id=cargo.id)
             await interaction.response.send_message(
-                f"{CHECK} Cargo de morador atualizado!" if ok else f"{X} Erro ao salvar cargo de morador.",
+                f"{LIST} {CHECK} Cargo de morador atualizado!" if ok else f"{X} Erro ao salvar cargo de morador.",
                 ephemeral=True
             )
         except Exception as e:
