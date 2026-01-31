@@ -106,15 +106,17 @@ class FarmConfigView(ui.LayoutView):
             container.add_item(ui.ActionRow(btn_meta))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"Status: **{status_txt}**"))
+        status_badge = f"🟢 **Ativo**" if cfg["enabled"] == 1 else f"🔴 **Inativo**"
+        container.add_item(ui.TextDisplay(f"Status: {status_badge}"))
 
         btn_toggle = ui.Button(
-            label=("🔒 Ativar Farm" if cfg["enabled"] == 0 else "🔓 Desativar Farm"),
+            label=("Ativar Farm" if cfg["enabled"] == 0 else "Desativar Farm"),
+            emoji=(TOGGLE_OFF if cfg["enabled"] == 0 else TOGGLE_ON),
             style=discord.ButtonStyle.success if cfg["enabled"] == 0 else discord.ButtonStyle.danger
         )
         btn_toggle.callback = self._toggle
 
-        btn_back = ui.Button(label="↩ Voltar", style=discord.ButtonStyle.secondary)
+        btn_back = ui.Button(label="Voltar", style=discord.ButtonStyle.secondary)
         btn_back.callback = self._close
 
         container.add_item(ui.ActionRow(btn_toggle, btn_back))
@@ -265,17 +267,23 @@ class FarmMetaModal(ui.Modal):
 
 
 class FarmUserPanelView(ui.LayoutView):
-    def __init__(self, db: Database, guild: discord.Guild):
+    def __init__(self, db: Database, guild: discord.Guild | None):
         super().__init__(timeout=None)
         self.db = db
         self.guild = guild
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"**Servidor de {guild.name} • Painel de Farm**"))
+        guild_name = guild.name if guild else "Servidor"
+        container.add_item(ui.TextDisplay(f"**Servidor de {guild_name} • Painel de Farm**"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Clique no botão abaixo para abrir sua pasta de farm."))
 
-        btn_open = ui.Button(label="📁 Abrir pasta", style=discord.ButtonStyle.secondary)
+        btn_open = ui.Button(
+            label="Abrir pasta",
+            style=discord.ButtonStyle.secondary,
+            emoji=FOLDER,
+            custom_id="farm:abrir_pasta"
+        )
         btn_open.callback = self._open_folder
         container.add_item(ui.ActionRow(btn_open))
 
@@ -283,20 +291,23 @@ class FarmUserPanelView(ui.LayoutView):
 
     async def _open_folder(self, interaction: discord.Interaction):
         try:
-            cfg = await _get_farm_config(self.db, self.guild.id)
+            if not interaction.guild:
+                await interaction.response.send_message(f"{X} Este comando só funciona em servidor.", ephemeral=True)
+                return
+            cfg = await _get_farm_config(self.db, interaction.guild.id)
             if cfg["enabled"] != 1:
                 await interaction.response.send_message(f"{X} O sistema de farm está desativado.", ephemeral=True)
                 return
 
             approver_role_id = cfg["approver_role_id"]
-            approver_role = self.guild.get_role(approver_role_id) if approver_role_id else None
+            approver_role = interaction.guild.get_role(approver_role_id) if approver_role_id else None
             if not approver_role:
                 await interaction.response.send_message(f"{X} Cargo de aprovador não configurado.", ephemeral=True)
                 return
 
-            existing_id = await self.db.get_farm_channel(self.guild.id, interaction.user.id)
+            existing_id = await self.db.get_farm_channel(interaction.guild.id, interaction.user.id)
             if existing_id:
-                canal = self.guild.get_channel(existing_id)
+                canal = interaction.guild.get_channel(existing_id)
                 if canal:
                     await interaction.response.send_message(
                         f"{CHECK} Sua pasta já está aberta: {canal.mention}",
@@ -307,13 +318,13 @@ class FarmUserPanelView(ui.LayoutView):
             await interaction.response.defer(ephemeral=True)
 
             overwrites = {
-                self.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
                 interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True),
                 approver_role: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_messages=True),
-                self.guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
+                interaction.guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
             }
 
-            for role in self.guild.roles:
+            for role in interaction.guild.roles:
                 if role.permissions.administrator:
                     overwrites[role] = discord.PermissionOverwrite(
                         read_messages=True,
@@ -321,14 +332,14 @@ class FarmUserPanelView(ui.LayoutView):
                         manage_messages=True
                     )
 
-            canal = await self.guild.create_text_channel(
+            canal = await interaction.guild.create_text_channel(
                 name=f"farm-{interaction.user.name}",
                 topic=f"Farm de {interaction.user.id}",
                 overwrites=overwrites,
                 reason=f"Pasta de farm criada para {interaction.user}"
             )
 
-            await self.db.set_farm_channel(self.guild.id, canal.id, interaction.user.id)
+            await self.db.set_farm_channel(interaction.guild.id, canal.id, interaction.user.id)
 
             view = FarmFolderView(self.db, interaction.user.mention)
             await canal.send(view=view)
@@ -437,6 +448,7 @@ class FarmCog(commands.Cog):
         self.bot = bot
         self.db = Database()
         self.bot.add_view(FarmFolderView(self.db))
+        self.bot.add_view(FarmUserPanelView(self.db, None))
         print("Cog de Farm carregado com sucesso!")
 
     @app_commands.command(name="farm", description="Abrir o painel do sistema de farm")
@@ -445,7 +457,7 @@ class FarmCog(commands.Cog):
             await interaction.response.send_message(f"{X} Este comando só funciona em servidor.", ephemeral=True)
             return
         view = FarmUserPanelView(self.db, interaction.guild)
-        await interaction.response.send_message(view=view, ephemeral=True)
+        await interaction.response.send_message(view=view)
 
 
 async def setup(bot: commands.Bot):
