@@ -14,7 +14,7 @@ def _fmt_money(v: float) -> str:
 
 class EditarSaldoModal(ui.Modal):
     def __init__(self, db: Database, alvo: discord.Member):
-        super().__init__(title=f"{PIGGY} Editar Saldo")
+        super().__init__(title="🐷 Editar Saldo")
         self.db = db
         self.alvo = alvo
 
@@ -82,7 +82,7 @@ class BancoView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f"**Última venda:** {_fmt_money(ult_venda) if ult_venda is not None else '-'}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        btn_editar = ui.Button(label=f"{SETTINGS} Editar saldo", style=discord.ButtonStyle.secondary)
+        btn_editar = ui.Button(label="Editar saldo", style=discord.ButtonStyle.secondary, emoji=SETTINGS)
         btn_editar.callback = self.editar_saldo
 
         btn_transcrever = ui.Button(label="Transcrever", style=discord.ButtonStyle.secondary)
