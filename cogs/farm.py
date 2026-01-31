@@ -3,7 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH, FOLDER, TOGGLE_OFF, TOGGLE_ON
+from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH
 
 
 FREQ_OPTIONS = [
@@ -51,7 +51,7 @@ def _build_meta_text(cfg: dict) -> str:
     qty = cfg.get("meta_qty")
     tipo = cfg.get("meta_tipo") or "-"
     qty_txt = str(qty) if qty is not None else "-"
-    return f"**Descrição:** {desc}\n**Quantidade:** {qty_txt}\n**Tipo:** {tipo}"
+    return f"Descrição: {desc}\nQuantidade: {qty_txt}\nTipo: {tipo}"
 
 
 class FarmConfigView(ui.LayoutView):
@@ -69,7 +69,7 @@ class FarmConfigView(ui.LayoutView):
         status_txt = _bool_label(cfg["enabled"])
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {SETTINGS} Sistema de Farm"))
+        container.add_item(ui.TextDisplay("**Sistema de Farms**"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         btn_role = ui.Button(label="⚙️ Editar", style=discord.ButtonStyle.secondary)
@@ -87,11 +87,11 @@ class FarmConfigView(ui.LayoutView):
         btn_freq.callback = self._edit_freq
         try:
             container.add_item(ui.Section(
-                ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n**{freq_txt}**"),
+                ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n{freq_txt}"),
                 accessory=btn_freq
             ))
         except Exception:
-            container.add_item(ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n**{freq_txt}**"))
+            container.add_item(ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n{freq_txt}"))
             container.add_item(ui.ActionRow(btn_freq))
 
         btn_meta = ui.Button(label="⚙️ Editar", style=discord.ButtonStyle.secondary)
@@ -106,11 +106,10 @@ class FarmConfigView(ui.LayoutView):
             container.add_item(ui.ActionRow(btn_meta))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        status_badge = f"🟢 **Ativo**" if cfg["enabled"] == 1 else f"🔴 **Inativo**"
-        container.add_item(ui.TextDisplay(f"Status: {status_badge}"))
+        container.add_item(ui.TextDisplay(f"Status: **{status_txt}**"))
 
         btn_toggle = ui.Button(
-            label=(f"{TOGGLE_ON} Desativar Farm" if cfg["enabled"] == 1 else f"{TOGGLE_OFF} Ativar Farm"),
+            label=("🔒 Ativar Farm" if cfg["enabled"] == 0 else "🔓 Desativar Farm"),
             style=discord.ButtonStyle.success if cfg["enabled"] == 0 else discord.ButtonStyle.danger
         )
         btn_toggle.callback = self._toggle
@@ -157,7 +156,7 @@ class FarmEditRoleView(ui.LayoutView):
         self.guild = guild
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {SETTINGS} Cargo de Aprovador do Farm"))
+        container.add_item(ui.TextDisplay("# Cargo de Aprovador do Farm"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Selecione o cargo que poderá aprovar o farm."))
 
@@ -191,7 +190,7 @@ class FarmEditFreqView(ui.LayoutView):
         self.guild = guild
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {SETTINGS} Tipo de Meta"))
+        container.add_item(ui.TextDisplay("# Tipo de Meta"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Selecione a frequência da meta."))
 
@@ -272,11 +271,11 @@ class FarmUserPanelView(ui.LayoutView):
         self.guild = guild
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# Servidor de {guild.name} • Painel de Farm"))
+        container.add_item(ui.TextDisplay(f"**Servidor de {guild.name} • Painel de Farm**"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Clique no botão abaixo para abrir sua pasta de farm."))
 
-        btn_open = ui.Button(label="Abrir pasta", style=discord.ButtonStyle.secondary, emoji=FOLDER)
+        btn_open = ui.Button(label="📁 Abrir pasta", style=discord.ButtonStyle.secondary)
         btn_open.callback = self._open_folder
         container.add_item(ui.ActionRow(btn_open))
 
@@ -354,7 +353,7 @@ class FarmFolderView(ui.LayoutView):
         self.owner_mention = owner_mention or "Usuário"
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# {self.owner_mention}, essa é sua pasta de farm!"))
+        container.add_item(ui.TextDisplay(f"** {self.owner_mention}, essa é sua pasta de farm!**"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         btn_close = ui.Button(label="Fechar Pasta", style=discord.ButtonStyle.danger, emoji=TRASH)
@@ -417,15 +416,15 @@ class FarmFolderView(ui.LayoutView):
         qty_txt = str(qty) if qty is not None else "-"
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay(f"# Servidor de {interaction.guild.name} • Meta de Farm"))
+        container.add_item(ui.TextDisplay(f"** Servidor de {interaction.guild.name} • Meta de Farm**"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
             f"**Frequência**\n"
             f"{freq_txt}\n"
             f"**Descrição**\n"
-            f"Observação: {desc}\n"
-            f"Quantidade: {qty_txt}\n"
-            f"Tipo: {tipo}"
+            f"**Observação:** {desc}\n"
+            f"**Quantidade:** {qty_txt}\n"
+            f"**Tipo:** {tipo}"
         ))
 
         view = ui.LayoutView()
