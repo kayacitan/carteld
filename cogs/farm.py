@@ -3,7 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH
+from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH, FOLDER, TOGGLE_OFF, TOGGLE_ON
 
 
 FREQ_OPTIONS = [
