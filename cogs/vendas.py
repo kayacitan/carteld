@@ -56,7 +56,7 @@ class VendaEncomendaModal(ui.Modal):
         self.modo = modo
         self.produto_id = produto_id
 
-        titulo = f"{VENDAS} Registrar Venda" if modo == "venda" else f"{PACKAGE} Registrar Encomenda"
+        titulo = "Registrar Venda" if modo == "venda" else "Registrar Encomenda"
         super().__init__(title=titulo)
 
         self.quantidade = ui.TextInput(
@@ -275,18 +275,16 @@ class PainelVendasView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         btn_venda = ui.Button(
-            label="Registrar Venda",
+            label=f"{VENDAS} Registrar Venda",
             style=discord.ButtonStyle.secondary,
-            custom_id="painel_vendas:registrar_venda",
-            emoji=VENDAS
+            custom_id="painel_vendas:registrar_venda"
         )
         btn_venda.callback = self.abrir_venda
 
         btn_encomenda = ui.Button(
-            label="Registrar Encomenda",
+            label=f"{PACKAGE} Registrar Encomenda",
             style=discord.ButtonStyle.secondary,
-            custom_id="painel_vendas:registrar_encomenda",
-            emoji=PACKAGE
+            custom_id="painel_vendas:registrar_encomenda"
         )
         btn_encomenda.callback = self.abrir_encomenda
 
@@ -386,10 +384,9 @@ class LogEncomendaPendenteView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         self.btn_confirmar = ui.Button(
-            label='Confirmar Entrega',
+            label=f'{CHECK} Confirmar Entrega',
             style=discord.ButtonStyle.success,
-            custom_id='encomenda_confirmar',
-            emoji=CHECK
+            custom_id='encomenda_confirmar'
         )
         self.btn_confirmar.callback = self.confirmar_entrega
         container.add_item(ui.ActionRow(self.btn_confirmar))
@@ -543,4 +540,6 @@ class VendasCog(commands.Cog):
             traceback.print_exc()
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(VendasCog(bot))
+    cog = VendasCog(bot)
+    await cog.db.init_db()
+    await bot.add_cog(cog)

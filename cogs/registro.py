@@ -3,7 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from utils.emojis import CHECK, USER, LIST
+from utils.emojis import CHECK, X, USER, LIST
 
 # --- O MODAL DE PREENCHIMENTO ---
 class ModalRegistro(ui.Modal, title=f'{USER} Complete seu Registro'):
@@ -137,7 +137,7 @@ class AprovacaoView(ui.View):
         self.rg = rg
         self.message_id = message_id
 
-    @ui.button(label="Aprovar", style=discord.ButtonStyle.success, custom_id="aprovar_registro", emoji=CHECK)
+    @ui.button(label=f"{CHECK} Aprovar", style=discord.ButtonStyle.success, custom_id="aprovar_registro")
     async def aprovar(self, interaction: discord.Interaction, button: ui.Button):
         try:
             message_id = interaction.message.id
@@ -249,7 +249,7 @@ class AprovacaoView(ui.View):
                 ephemeral=True
             )
     
-    @ui.button(label="Negar", style=discord.ButtonStyle.danger, custom_id="negar_registro")
+    @ui.button(label=f"{X} Negar", style=discord.ButtonStyle.danger, custom_id="negar_registro")
     async def negar(self, interaction: discord.Interaction, button: ui.Button):
         try:
             message_id = interaction.message.id

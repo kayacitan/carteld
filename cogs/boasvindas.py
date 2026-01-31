@@ -18,7 +18,7 @@ class Welcome(ui.LayoutView):
         galeria_wc.add_item(media='https://media.discordapp.net/attachments/1366148719967211612/1465503657452765286/Cartel.png?ex=69795823&is=697806a3&hm=6d37d5b02ab93b40bb31234a9b2518a68222014a0eb9472be730b8b1c5990561&=&format=webp&quality=lossless')
         container.add_item(galeria_wc)
 
-        botaowelcome = ui.Button(label='Novo Membro', custom_id='boasvindas_novo_membro', emoji=USER)
+        botaowelcome = ui.Button(label=f'{USER} Novo Membro', custom_id='boasvindas_novo_membro')
         botaowelcome.callback = self.botaowelcome
 
         linha = ui.ActionRow(botaowelcome)

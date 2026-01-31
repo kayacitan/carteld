@@ -155,15 +155,13 @@ class ConfirmacaoView(ui.LayoutView):
 
         # Botões de confirmação
         botao_confirmar = ui.Button(
-            label="Confirmar Fabricação",
-            emoji=CHECK,
+            label=f"{CHECK} Confirmar Fabricação",
             style=discord.ButtonStyle.success
         )
         botao_confirmar.callback = self.confirmar
 
         botao_cancelar = ui.Button(
-            label="Cancelar",
-            emoji=X,
+            label=f"{X} Cancelar",
             style=discord.ButtonStyle.danger
         )
         botao_cancelar.callback = self.cancelar
