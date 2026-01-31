@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime
 import traceback
 from database import Database
+from cogs.emoji import CHECK, X, WALLET, CONTAINER
 
 # Definição dos produtos
 PRODUTOS = {
@@ -41,7 +42,7 @@ PRODUTOS = {
 
 
 # --- MODAL PARA QUANTIDADE ---
-class QuantidadeModal(ui.Modal, title='📦 Quantidade de Fabricação'):
+class QuantidadeModal(ui.Modal, title=f'{CONTAINER} Quantidade de Fabricação'):
     def __init__(self, produto_id: str, produto: dict, db: Database):
         super().__init__()
         self.produto_id = produto_id
@@ -62,7 +63,7 @@ class QuantidadeModal(ui.Modal, title='📦 Quantidade de Fabricação'):
 
             if qtd <= 0:
                 await interaction.response.send_message(
-                    "❌ A quantidade deve ser maior que zero!",
+                    f"{X} A quantidade deve ser maior que zero!",
                     ephemeral=True
                 )
                 return
@@ -95,14 +96,14 @@ class QuantidadeModal(ui.Modal, title='📦 Quantidade de Fabricação'):
 
         except ValueError:
             await interaction.response.send_message(
-                "❌ Por favor, digite apenas números!",
+                f"{X} Por favor, digite apenas números!",
                 ephemeral=True
             )
         except Exception as e:
             print(f"Erro no modal de quantidade: {e}")
             traceback.print_exc()
             await interaction.response.send_message(
-                "❌ Ocorreu um erro ao processar a quantidade. Tente novamente.",
+                f"{X} Ocorreu um erro ao processar a quantidade. Tente novamente.",
                 ephemeral=True
             )
 
@@ -111,7 +112,7 @@ class QuantidadeModal(ui.Modal, title='📦 Quantidade de Fabricação'):
         traceback.print_exc()
         try:
             await interaction.response.send_message(
-                "❌ Ocorreu um erro ao processar o formulário. Tente novamente.",
+                f"{X} Ocorreu um erro ao processar o formulário. Tente novamente.",
                 ephemeral=True
             )
         except:
@@ -136,31 +137,33 @@ class ConfirmacaoView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Informações do produto
-        container.add_item(ui.TextDisplay(f"**📦 Produto:** {self.produto['nome']}"))
+        container.add_item(ui.TextDisplay(f"**{CONTAINER} Produto:** {self.produto['nome']}"))
         container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {self.quantidade} unidade(s)"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Custo total
         custo_formatado = f"R$ {self.custo_total:,.2f}".replace(',', '.')
-        container.add_item(ui.TextDisplay(f"**💰 Custo Total:** {custo_formatado}"))
+        container.add_item(ui.TextDisplay(f"**{WALLET} Custo Total:** {custo_formatado}"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Materiais necessários
-        container.add_item(ui.TextDisplay(f"**📦 Materiais Necessários:**\n{self.materiais}"))
+        container.add_item(ui.TextDisplay(f"**{CONTAINER} Materiais Necessários:**\n{self.materiais}"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         # Botões de confirmação
         botao_confirmar = ui.Button(
-            label="✅ Confirmar Fabricação",
+            label="Confirmar Fabricação",
+            emoji=CHECK,
             style=discord.ButtonStyle.success
         )
         botao_confirmar.callback = self.confirmar
 
         botao_cancelar = ui.Button(
-            label="❌ Cancelar",
+            label="Cancelar",
+            emoji=X,
             style=discord.ButtonStyle.danger
         )
         botao_cancelar.callback = self.cancelar
@@ -248,7 +251,7 @@ class ConfirmacaoView(ui.LayoutView):
 
             # Confirmar para o usuário
             await interaction.followup.send(
-                f"✅ **Fabricação confirmada!**\n"
+                f"{CHECK} **Fabricação confirmada!**\n"
                 f"{self.quantidade}x {self.produto['nome']} foram fabricados com sucesso!",
                 ephemeral=True
             )
@@ -262,7 +265,7 @@ class ConfirmacaoView(ui.LayoutView):
             print(f"Erro ao confirmar fabricação: {e}")
             traceback.print_exc()
             await interaction.followup.send(
-                "❌ Erro ao processar a fabricação. Tente novamente.",
+                f"{X} Erro ao processar a fabricação. Tente novamente.",
                 ephemeral=True
             )
 
@@ -279,7 +282,7 @@ class ConfirmacaoView(ui.LayoutView):
 
             await interaction.response.edit_message(view=self)
             await interaction.followup.send(
-                "❌ Fabricação cancelada.",
+                f"{X} Fabricação cancelada.",
                 ephemeral=True
             )
         except Exception as e:
@@ -297,20 +300,20 @@ class LogFabricacaoView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         container.add_item(ui.TextDisplay(f"**👤 Usuário:** {usuario.mention} (ID: {usuario.id})"))
-        container.add_item(ui.TextDisplay(f"**📦 Produto:** {produto['nome']}"))
+        container.add_item(ui.TextDisplay(f"**{CONTAINER} Produto:** {produto['nome']}"))
         container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {quantidade} unidade(s)"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         custo_formatado = f"R$ {custo_total:,.2f}".replace(',', '.')
-        container.add_item(ui.TextDisplay(f"**💰 Custo Total:** {custo_formatado}"))
+        container.add_item(ui.TextDisplay(f"**{WALLET} Custo Total:** {custo_formatado}"))
 
         if saldo_atual is not None:
             saldo_formatado = f"R$ {float(saldo_atual):,.2f}".replace(',', '.')
             container.add_item(ui.TextDisplay(f"**💼 Saldo em caixa:** {saldo_formatado}"))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
-        container.add_item(ui.TextDisplay(f"**📦 Materiais Utilizados:**\n{materiais}"))
+        container.add_item(ui.TextDisplay(f"**{CONTAINER} Materiais Utilizados:**\n{materiais}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         data_hora = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
@@ -335,7 +338,7 @@ class FabricacaoView(ui.LayoutView):
             materiais_texto = "\n".join([f"• {mat}: {qtd}" for mat, qtd in info['materiais'].items()])
             container.add_item(ui.TextDisplay(f"**{info['emoji']} {info['nome']}**"))
             receita_info = (
-                f"💰 Custo: R$ {info['custo']:,.2f}".replace(',', '.') + "\n"
+                f"{WALLET} Custo: R$ {info['custo']:,.2f}".replace(',', '.') + "\n"
                 f"📋 Materiais:\n{materiais_texto}"
             )
             container.add_item(ui.TextDisplay(receita_info))
@@ -374,7 +377,7 @@ class FabricacaoView(ui.LayoutView):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "❌ Ocorreu um erro ao processar a seleção. Tente novamente.",
+                    f"{X} Ocorreu um erro ao processar a seleção. Tente novamente.",
                     ephemeral=True
                 )
             except:
@@ -385,7 +388,7 @@ class FabricacaoCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
-        print("✅ Cog de Fabricação carregado com sucesso!")
+        print("Cog de Fabricação carregado com sucesso!")
 
     @app_commands.command(name='fabricacao', description='Iniciar processo de fabricação de produtos')
     async def fabricacao(self, interaction: discord.Interaction):
@@ -401,13 +404,13 @@ class FabricacaoCog(commands.Cog):
 
             view = FabricacaoView(self.db)
             await interaction.response.send_message(view=view)
-            print(f"✅ Painel de fabricação enviado por {interaction.user}")
+            print(f"Painel de fabricação enviado por {interaction.user}")
 
         except Exception as e:
             print(f"Erro ao enviar painel de fabricação: {e}")
             traceback.print_exc()
             await interaction.response.send_message(
-                "❌ Erro ao enviar o painel de fabricação. Verifique as permissões do bot.",
+                f"{X} Erro ao enviar o painel de fabricação. Verifique as permissões do bot.",
                 ephemeral=True
             )
 
@@ -417,7 +420,7 @@ class FabricacaoCog(commands.Cog):
         traceback.print_exc()
         try:
             await interaction.response.send_message(
-                "❌ Ocorreu um erro ao executar o comando.",
+                f"{X} Ocorreu um erro ao executar o comando.",
                 ephemeral=True
             )
         except:
@@ -429,7 +432,7 @@ async def setup(bot):
         cog = FabricacaoCog(bot)
         await cog.db.init_db()
         await bot.add_cog(cog)
-        print("✅ FabricacaoCog adicionado com sucesso!")
+        print("FabricacaoCog adicionado com sucesso!")
     except Exception as e:
-        print(f"❌ Erro ao carregar FabricacaoCog: {e}")
+        print(f"Erro ao carregar FabricacaoCog: {e}")
         traceback.print_exc()

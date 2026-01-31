@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime, timedelta
 import traceback
 from database import Database
+from cogs.emoji import CHECK, X, WALLET, CONTAINER
 
 
 PRODUTOS = {
@@ -125,7 +126,7 @@ class DashboardView(ui.LayoutView):
     async def _ensure_author(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.user_id:
             await interaction.response.send_message(
-                "❌ Este painel é privado. Use /dashboard para abrir o seu.",
+                f"{X} Este painel é privado. Use /dashboard para abrir o seu.",
                 ephemeral=True
             )
             return False
@@ -200,7 +201,7 @@ class DashboardView(ui.LayoutView):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "❌ Ocorreu um erro ao atualizar. Tente novamente.",
+                    f"{X} Ocorreu um erro ao atualizar. Tente novamente.",
                     ephemeral=True
                 )
             except Exception:
@@ -254,7 +255,7 @@ class DashboardView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         vendas_texto = (
-            f"**💰 Vendas**\n"
+            f"**{WALLET} Vendas**\n"
             f"• Hoje: {_fmt_money(total_hoje)}\n"
             f"• Últimos 7 dias: {_fmt_money(total_semana)}"
         )
@@ -274,16 +275,16 @@ class DashboardView(ui.LayoutView):
             estoque_linhas.append(
                 f"• {info['emoji']} **{info['nome']}**: {qtd} | disp {disp} | res {res}"
             )
-        estoque_texto = "**📦 Estoque**\n" + ("\n".join(estoque_linhas) if estoque_linhas else "Sem dados.")
+        estoque_texto = f"**{CONTAINER} Estoque**\n" + ("\n".join(estoque_linhas) if estoque_linhas else "Sem dados.")
         self._add_section(container, estoque_texto, self._nav_button("Ver", PAGES["ESTOQUE"]))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        encomendas_texto = f"**📦 Encomendas**\n• Pendentes: {len(pendentes)}"
+        encomendas_texto = f"**{CONTAINER} Encomendas**\n• Pendentes: {len(pendentes)}"
         self._add_section(container, encomendas_texto, self._nav_button("Ver", PAGES["ENCOMENDAS"]))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         metas_texto = (
-            f"**✅ Metas**\n"
+            f"**{CHECK} Metas**\n"
             f"• Aprovadas (7 dias): {metas_semana}\n"
             f"• Pendentes: indisponível"
         )
@@ -302,7 +303,7 @@ class DashboardView(ui.LayoutView):
                  for user, origem, delta, _saldo, data in movimentos]
             )
         banco_texto = (
-            "**🏦 Banco**\n"
+            f"**{WALLET} Banco**\n"
             f"Top saldos:\n{top_saldos_txt}\n"
             f"Movimentos recentes:\n{mov_txt}"
         )
@@ -326,7 +327,7 @@ class DashboardView(ui.LayoutView):
         lista = "\n".join(linhas) if linhas else "Nenhuma venda registrada."
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 💰 Vendas — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {WALLET} Vendas — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
             f"• Hoje: {_fmt_money(total_hoje)}\n"
@@ -362,7 +363,7 @@ class DashboardView(ui.LayoutView):
 
     async def _build_estoque(self) -> ui.Container:
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 📦 Estoque — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {CONTAINER} Estoque — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         for produto_id, info in PRODUTOS.items():
@@ -401,7 +402,7 @@ class DashboardView(ui.LayoutView):
             )
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 📦 Encomendas — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {CONTAINER} Encomendas — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(f"**Pendentes:**\n{pendentes_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
@@ -415,7 +416,7 @@ class DashboardView(ui.LayoutView):
         aprovadas = await self.db.get_metas_aprovadas_periodo(self.guild.id, inicio_semana, fim_semana)
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# ✅ Metas — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {CHECK} Metas — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
             f"• Aprovadas (7 dias): {aprovadas}\n"
@@ -443,7 +444,7 @@ class DashboardView(ui.LayoutView):
             )
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 🏦 Banco — Resumo do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {WALLET} Banco — Resumo do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(f"**Top saldos:**\n{top_txt}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
@@ -457,13 +458,13 @@ class DashboardCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
-        print("✅ Cog de Dashboard carregado com sucesso!")
+        print("Cog de Dashboard carregado com sucesso!")
 
     @app_commands.command(name="dashboard", description="Abrir a dashboard administrativa")
     async def dashboard(self, interaction: discord.Interaction):
         try:
             if not interaction.guild:
-                await interaction.response.send_message("❌ Este comando só funciona em servidor.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Este comando só funciona em servidor.", ephemeral=True)
                 return
 
             if interaction.user.guild_permissions.administrator:
@@ -473,7 +474,7 @@ class DashboardCog(commands.Cog):
                 _, _, cargo_gerente_id = await self.db.get_cargos_sistema(interaction.guild.id)
                 if cargo_gerente_id is None:
                     await interaction.response.send_message(
-                        "❌ Cargo gerente não configurado. Apenas administradores podem usar /dashboard.",
+                        f"{X} Cargo gerente não configurado. Apenas administradores podem usar /dashboard.",
                         ephemeral=True
                     )
                     return
@@ -481,7 +482,7 @@ class DashboardCog(commands.Cog):
 
             if not permitido:
                 await interaction.response.send_message(
-                    "❌ Você não tem permissão para usar o dashboard.",
+                    f"{X} Você não tem permissão para usar o dashboard.",
                     ephemeral=True
                 )
                 return
@@ -496,7 +497,7 @@ class DashboardCog(commands.Cog):
             traceback.print_exc()
             try:
                 await interaction.response.send_message(
-                    "❌ Ocorreu um erro ao abrir o dashboard.",
+                    f"{X} Ocorreu um erro ao abrir o dashboard.",
                     ephemeral=True
                 )
             except Exception:
@@ -508,7 +509,7 @@ async def setup(bot: commands.Bot):
         cog = DashboardCog(bot)
         await cog.db.init_db()
         await bot.add_cog(cog)
-        print("✅ DashboardCog adicionado com sucesso!")
+        print("DashboardCog adicionado com sucesso!")
     except Exception as e:
-        print(f"❌ Erro ao carregar DashboardCog: {e}")
+        print(f"Erro ao carregar DashboardCog: {e}")
         traceback.print_exc()

@@ -5,6 +5,7 @@ from datetime import datetime
 import io
 import traceback
 from database import Database
+from cogs.emoji import CHECK, X, WALLET, CONFIG
 
 
 def _fmt_money(v: float) -> str:
@@ -13,7 +14,7 @@ def _fmt_money(v: float) -> str:
 
 class EditarSaldoModal(ui.Modal):
     def __init__(self, db: Database, alvo: discord.Member):
-        super().__init__(title="🏦 Editar Saldo")
+        super().__init__(title=f"{WALLET} Editar Saldo")
         self.db = db
         self.alvo = alvo
 
@@ -37,7 +38,7 @@ class EditarSaldoModal(ui.Modal):
         try:
             # só o próprio ou dono do servidor
             if interaction.user.id != self.alvo.id and interaction.guild.owner_id != interaction.user.id and not interaction.user.guild_permissions.administrator:
-                await interaction.response.send_message("❌ Você não pode editar o saldo de outra pessoa.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Você não pode editar o saldo de outra pessoa.", ephemeral=True)
                 return
 
             delta = float(self.delta.value.replace(",", "."))
@@ -54,14 +55,14 @@ class EditarSaldoModal(ui.Modal):
                 ref_id=None
             )
             await interaction.response.send_message(
-                f"✅ Saldo atualizado.\n🏦 Novo saldo: **{_fmt_money(novo_saldo)}**",
+                f"{CHECK} Saldo atualizado.\n{WALLET} Novo saldo: **{_fmt_money(novo_saldo)}**",
                 ephemeral=True
             )
         except Exception as e:
             print(f"Erro ao editar saldo: {e}")
             traceback.print_exc()
             try:
-                await interaction.response.send_message("❌ Erro ao editar saldo.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Erro ao editar saldo.", ephemeral=True)
             except:
                 pass
 
@@ -73,18 +74,18 @@ class BancoView(ui.LayoutView):
         self.alvo = alvo
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 🏦 Banco do Usuário"))
+        container.add_item(ui.TextDisplay(f"# {WALLET} Banco do Usuário"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"**👤 Usuário:** {alvo.mention}"))
-        container.add_item(ui.TextDisplay(f"**💵 Caixa (atual):** {_fmt_money(saldo)}"))
-        container.add_item(ui.TextDisplay(f"**🏭 Última fabricação:** {_fmt_money(ult_fab) if ult_fab is not None else '—'}"))
-        container.add_item(ui.TextDisplay(f"**💰 Última venda:** {_fmt_money(ult_venda) if ult_venda is not None else '—'}"))
+        container.add_item(ui.TextDisplay(f"**Usuário:** {alvo.mention}"))
+        container.add_item(ui.TextDisplay(f"**{WALLET} Caixa (atual):** {_fmt_money(saldo)}"))
+        container.add_item(ui.TextDisplay(f"**Última fabricação:** {_fmt_money(ult_fab) if ult_fab is not None else '-'}"))
+        container.add_item(ui.TextDisplay(f"**Última venda:** {_fmt_money(ult_venda) if ult_venda is not None else '-'}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        btn_editar = ui.Button(label="⚙️ Editar saldo", style=discord.ButtonStyle.secondary)
+        btn_editar = ui.Button(label="Editar saldo", style=discord.ButtonStyle.secondary, emoji=CONFIG)
         btn_editar.callback = self.editar_saldo
 
-        btn_transcrever = ui.Button(label="📎 Transcrever", style=discord.ButtonStyle.secondary)
+        btn_transcrever = ui.Button(label="Transcrever", style=discord.ButtonStyle.secondary)
         btn_transcrever.callback = self.transcrever
 
         container.add_item(ui.ActionRow(btn_editar, btn_transcrever))
@@ -128,13 +129,13 @@ class BancoView(ui.LayoutView):
 
             data = "\n".join(linhas).encode("utf-8")
             arquivo = discord.File(fp=io.BytesIO(data), filename=f"transcript_banco_{self.alvo.id}.txt")
-            await interaction.response.send_message("📄 Transcript gerado:", file=arquivo, ephemeral=True)
+            await interaction.response.send_message("Transcript gerado:", file=arquivo, ephemeral=True)
 
         except Exception as e:
             print(f"Erro ao transcrever banco: {e}")
             traceback.print_exc()
             try:
-                await interaction.response.send_message("❌ Erro ao gerar transcript.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Erro ao gerar transcript.", ephemeral=True)
             except:
                 pass
 
@@ -143,7 +144,7 @@ class BancoCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
-        print("✅ Cog de Banco carregado com sucesso!")
+        print("Cog de Banco carregado com sucesso!")
 
     @app_commands.command(name="banco", description="Ver banco pessoal e histórico")
     async def banco(self, interaction: discord.Interaction, usuario: discord.Member = None):

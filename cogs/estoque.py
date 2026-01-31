@@ -3,6 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
+from cogs.emoji import CONTAINER, X
 
 PRODUTOS = {
     "masterpick": {"nome": "Masterpick", "emoji": "🔧"},
@@ -16,7 +17,7 @@ class EstoqueView(ui.LayoutView):
         super().__init__()
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# 📦 Estoque do Servidor"))
+        container.add_item(ui.TextDisplay(f"# {CONTAINER} Estoque do Servidor"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         for produto_id, info in PRODUTOS.items():
@@ -36,13 +37,13 @@ class EstoqueCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
-        print("✅ Cog de Estoque carregado com sucesso!")
+        print("Cog de Estoque carregado com sucesso!")
 
     @app_commands.command(name="estoque", description="Consultar o estoque atual de produtos")
     async def estoque(self, interaction: discord.Interaction):
         try:
             if not interaction.guild:
-                await interaction.response.send_message("❌ Este comando só funciona em servidor.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Este comando só funciona em servidor.", ephemeral=True)
                 return
 
             dados = {}
@@ -56,7 +57,7 @@ class EstoqueCog(commands.Cog):
             print(f"Erro no comando /estoque: {e}")
             traceback.print_exc()
             try:
-                await interaction.response.send_message("❌ Erro ao consultar estoque.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Erro ao consultar estoque.", ephemeral=True)
             except:
                 pass
 

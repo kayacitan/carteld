@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime
 import traceback
 from database import Database
+from cogs.emoji import CHECK, X, WALLET, CONTAINER
 
 
 PRODUTOS = {
@@ -55,7 +56,7 @@ class VendaEncomendaModal(ui.Modal):
         self.modo = modo
         self.produto_id = produto_id
 
-        titulo = "💰 Registrar Venda" if modo == "venda" else "📦 Registrar Encomenda"
+        titulo = f"{WALLET} Registrar Venda" if modo == "venda" else f"{CONTAINER} Registrar Encomenda"
         super().__init__(title=titulo)
 
         self.quantidade = ui.TextInput(
@@ -79,12 +80,12 @@ class VendaEncomendaModal(ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         try:
             if not await _pode_usar_vendas(self.db, interaction):
-                await interaction.response.send_message("❌ Você não tem permissão para usar o sistema de vendas.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Você não tem permissão para usar o sistema de vendas.", ephemeral=True)
                 return
 
             qtd = int(self.quantidade.value)
             if qtd <= 0:
-                await interaction.response.send_message("❌ A quantidade deve ser maior que zero.", ephemeral=True)
+                await interaction.response.send_message(f"{X} A quantidade deve ser maior que zero.", ephemeral=True)
                 return
 
             cliente = self.cliente.value.strip() if self.cliente.value else "Não informado"
@@ -107,7 +108,7 @@ class VendaEncomendaModal(ui.Modal):
 
             produto_info = PRODUTOS.get(self.produto_id)
             if not produto_info:
-                await interaction.response.send_message("❌ Produto inválido.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Produto inválido.", ephemeral=True)
                 return
 
             nome_produto = produto_info["nome"]
@@ -146,7 +147,7 @@ class VendaEncomendaModal(ui.Modal):
                     comprador=cliente
                 )
                 if not venda_id:
-                    await interaction.response.send_message("❌ Erro ao salvar venda no banco.", ephemeral=True)
+                    await interaction.response.send_message(f"{X} Erro ao salvar venda no banco.", ephemeral=True)
                     return
 
                 novo_saldo = await self.db.aplicar_movimento_banco(
@@ -171,7 +172,7 @@ class VendaEncomendaModal(ui.Modal):
                 )
                 await canal_logs.send(view=log_view)
 
-                await interaction.response.send_message("✅ Venda registrada com sucesso!", ephemeral=True)
+                await interaction.response.send_message(f"{CHECK} Venda registrada com sucesso!", ephemeral=True)
                 return
 
             # ---------------- ENCOMENDA ----------------
@@ -188,7 +189,7 @@ class VendaEncomendaModal(ui.Modal):
                 cliente=cliente
             )
             if not encomenda_id:
-                await interaction.response.send_message("❌ Erro ao criar encomenda.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Erro ao criar encomenda.", ephemeral=True)
                 return
 
             view_encomenda = LogEncomendaPendenteView(
@@ -205,15 +206,15 @@ class VendaEncomendaModal(ui.Modal):
             mensagem = await canal_logs.send(view=view_encomenda)
             await self.db.set_encomenda_message_id(encomenda_id, mensagem.id)
 
-            await interaction.response.send_message("✅ Encomenda registrada como pendente!", ephemeral=True)
+            await interaction.response.send_message(f"{CHECK} Encomenda registrada como pendente!", ephemeral=True)
 
         except ValueError:
-            await interaction.response.send_message("❌ Digite apenas números válidos na quantidade.", ephemeral=True)
+            await interaction.response.send_message(f"{X} Digite apenas números válidos na quantidade.", ephemeral=True)
         except Exception as e:
             print(f"Erro no modal de venda/encomenda: {e}")
             traceback.print_exc()
             try:
-                await interaction.response.send_message("❌ Erro ao processar. Tente novamente.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Erro ao processar. Tente novamente.", ephemeral=True)
             except:
                 pass
 
@@ -225,7 +226,7 @@ class EscolherProdutoView(ui.LayoutView):
         self.modo = modo
 
         container = ui.Container()
-        titulo = "💰 Registrar Venda" if modo == "venda" else "📦 Registrar Encomenda"
+        titulo = f"{WALLET} Registrar Venda" if modo == "venda" else f"{CONTAINER} Registrar Encomenda"
 
         container.add_item(ui.TextDisplay(f"# {titulo}"))
         container.add_item(ui.TextDisplay("Selecione o produto abaixo:"))
@@ -235,7 +236,7 @@ class EscolherProdutoView(ui.LayoutView):
             preco = info["preco_unit"]
             container.add_item(ui.TextDisplay(
                 f"## {info['emoji']} {info['nome']}\n"
-                f"💰 Valor unitário: {_fmt_money(preco)}"
+                f"{WALLET} Valor unitário: {_fmt_money(preco)}"
             ))
             container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
@@ -313,13 +314,13 @@ class PainelVendasView(ui.LayoutView):
 
     async def abrir_venda(self, interaction: discord.Interaction):
         if not await _pode_usar_vendas(self.db, interaction):
-            await interaction.response.send_message("❌ Você não tem permissão para usar o sistema de vendas.", ephemeral=True)
+            await interaction.response.send_message(f"{X} Você não tem permissão para usar o sistema de vendas.", ephemeral=True)
             return
         await interaction.response.send_message(view=EscolherProdutoView(self.db, modo="venda"), ephemeral=True)
 
     async def abrir_encomenda(self, interaction: discord.Interaction):
         if not await _pode_usar_vendas(self.db, interaction):
-            await interaction.response.send_message("❌ Você não tem permissão para usar o sistema de vendas.", ephemeral=True)
+            await interaction.response.send_message(f"{X} Você não tem permissão para usar o sistema de vendas.", ephemeral=True)
             return
         await interaction.response.send_message(view=EscolherProdutoView(self.db, modo="encomenda"), ephemeral=True)
 
@@ -327,17 +328,17 @@ class PainelVendasView(ui.LayoutView):
 class LogVendaView(ui.LayoutView):
     def __init__(self, usuario: discord.Member, produto_nome: str, quantidade: int, preco_unit: float,
                  valor_total: float, comprador: str, saldo_atual: float | None = None,
-                 titulo: str = "💰 Venda Registrada"):
+                 titulo: str = f"{WALLET} Venda Registrada"):
         super().__init__()
 
         container = ui.Container()
         container.add_item(ui.TextDisplay(f"# {titulo}"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
         container.add_item(ui.TextDisplay(f"**👤 Vendedor:** {usuario.mention} (ID: {usuario.id})"))
-        container.add_item(ui.TextDisplay(f"**📦 Produto:** {produto_nome}"))
+        container.add_item(ui.TextDisplay(f"**{CONTAINER} Produto:** {produto_nome}"))
         container.add_item(ui.TextDisplay(f"**🔢 Quantidade:** {quantidade}"))
         container.add_item(ui.TextDisplay(f"**💵 Valor unitário:** {_fmt_money(preco_unit)}"))
-        container.add_item(ui.TextDisplay(f"**💰 Total:** {_fmt_money(valor_total)}"))
+        container.add_item(ui.TextDisplay(f"**{WALLET} Total:** {_fmt_money(valor_total)}"))
         container.add_item(ui.TextDisplay(f"**🧑 Comprador:** {comprador}"))
 
         if saldo_atual is not None:
@@ -398,7 +399,7 @@ class LogEncomendaPendenteView(ui.LayoutView):
                 return
 
             if not await _pode_confirmar_encomenda(self.db, interaction, self.dono_id):
-                await interaction.response.send_message("❌ Você não pode confirmar esta encomenda.", ephemeral=True)
+                await interaction.response.send_message(f"{X} Você não pode confirmar esta encomenda.", ephemeral=True)
                 return
 
             self._confirmado = True
@@ -407,7 +408,7 @@ class LogEncomendaPendenteView(ui.LayoutView):
 
             dados = await self.db.get_encomenda_por_id(self.encomenda_id)
             if not dados:
-                await interaction.followup.send("❌ Não foi possível encontrar a encomenda.", ephemeral=True)
+                await interaction.followup.send(f"{X} Não foi possível encontrar a encomenda.", ephemeral=True)
                 return
 
             guild_id, user_id, user_name, produto_id, produto_nome, quantidade, preco_unit, cliente, status = dados
@@ -417,7 +418,7 @@ class LogEncomendaPendenteView(ui.LayoutView):
 
             sucesso = await self.db.confirmar_encomenda(self.encomenda_id, confirmado_por_id=interaction.user.id)
             if not sucesso:
-                await interaction.followup.send("❌ Não foi possível confirmar a encomenda.", ephemeral=True)
+                await interaction.followup.send(f"{X} Não foi possível confirmar a encomenda.", ephemeral=True)
                 return
 
             valor_total = float(preco_unit) * int(quantidade)
@@ -441,18 +442,18 @@ class LogEncomendaPendenteView(ui.LayoutView):
                 valor_total=float(valor_total),
                 comprador=str(cliente or "Não informado"),
                 saldo_atual=novo_saldo,
-                titulo="📦 Encomenda Entregue"
+                titulo=f"{CONTAINER} Encomenda Entregue"
             )
 
             await interaction.message.edit(view=log_final)
 
-            await interaction.followup.send("✅ Entrega confirmada! Log atualizado.", ephemeral=True)
+            await interaction.followup.send(f"{CHECK} Entrega confirmada! Log atualizado.", ephemeral=True)
 
         except Exception as e:
             print(f"Erro ao confirmar encomenda: {e}")
             traceback.print_exc()
             try:
-                await interaction.followup.send("❌ Erro ao confirmar. Tente novamente.", ephemeral=True)
+                await interaction.followup.send(f"{X} Erro ao confirmar. Tente novamente.", ephemeral=True)
             except:
                 pass
 
@@ -464,12 +465,12 @@ class VendasCog(commands.Cog):
         # registra a view persistente do painel ao carregar o cog
         self.bot.add_view(PainelVendasView(self.db))
         self.bot.loop.create_task(self._rehydrate_encomendas_pendentes())
-        print("✅ Cog de Vendas carregado com sucesso!")
+        print("Cog de Vendas carregado com sucesso!")
 
     @app_commands.command(name="vendas", description="Abrir o painel do sistema de vendas")
     async def vendas(self, interaction: discord.Interaction):
         if not await _pode_usar_vendas(self.db, interaction):
-            await interaction.response.send_message("❌ Você não tem permissão para usar este comando.", ephemeral=True)
+            await interaction.response.send_message(f"{X} Você não tem permissão para usar este comando.", ephemeral=True)
             return
         view = PainelVendasView(self.db)
         await interaction.response.send_message(view=view)

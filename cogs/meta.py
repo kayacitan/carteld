@@ -4,6 +4,7 @@ from discord.ext import commands
 from datetime import datetime
 import traceback
 from database import Database
+from cogs.emoji import CHECK, X
 
 
 class MetaView(ui.LayoutView):
@@ -150,16 +151,16 @@ class MetaView(ui.LayoutView):
             
             # Confirmar para o usuário
             await interaction.followup.send(
-                f"✅ Canal criado com sucesso!\n"
+                f"{CHECK} Canal criado com sucesso!\n"
                 f"Acesse {canal.mention} para enviar sua meta.",
                 ephemeral=True
             )
             
-            print(f"✅ Canal de meta criado para {interaction.user} no servidor {interaction.guild.name}")
+            print(f"Canal de meta criado para {interaction.user} no servidor {interaction.guild.name}")
             
         except discord.Forbidden:
             await interaction.followup.send(
-                "❌ Não tenho permissão para criar canais! Peça a um administrador para ajustar as permissões.",
+                f"{X} Não tenho permissão para criar canais! Peça a um administrador para ajustar as permissões.",
                 ephemeral=True
             )
         except Exception as e:
@@ -167,7 +168,7 @@ class MetaView(ui.LayoutView):
             traceback.print_exc()
             try:
                 await interaction.followup.send(
-                    "❌ Erro ao criar canal de meta. Tente novamente.",
+                    f"{X} Erro ao criar canal de meta. Tente novamente.",
                     ephemeral=True
                 )
             except:
@@ -189,19 +190,21 @@ class AvaliacaoMetaView(ui.LayoutView):
         container.add_item(ui.TextDisplay(
             'Gerentes e administradores, avaliem a meta enviada acima.\n\n'
             '**Ações disponíveis:**\n'
-            '• ✅ Aprovar - Dá o cargo e envia para o log\n'
-            '• ❌ Reprovar - Fecha o canal sem dar o cargo'
+            f"• {CHECK} Aprovar - Dá o cargo e envia para o log\n"
+            f"• {X} Reprovar - Fecha o canal sem dar o cargo"
         ))
         
         # Botões
         botao_aprovar = ui.Button(
-            label="✅ Aprovar Meta",
+            label="Aprovar Meta",
+            emoji=CHECK,
             style=discord.ButtonStyle.success
         )
         botao_aprovar.callback = self.aprovar
         
         botao_reprovar = ui.Button(
-            label="❌ Reprovar Meta",
+            label="Reprovar Meta",
+            emoji=X,
             style=discord.ButtonStyle.danger
         )
         botao_reprovar.callback = self.reprovar
@@ -218,7 +221,7 @@ class AvaliacaoMetaView(ui.LayoutView):
                     any(role.id == (await self.db.get_config_meta(interaction.guild.id))[1] 
                         for role in interaction.user.roles)):
                 await interaction.response.send_message(
-                    "❌ Apenas administradores e gerentes podem aprovar metas!",
+                    f"{X} Apenas administradores e gerentes podem aprovar metas!",
                     ephemeral=True
                 )
                 return
@@ -260,10 +263,10 @@ class AvaliacaoMetaView(ui.LayoutView):
                 if canal_log:
                     # Criar log da meta aprovada
                     container_log = ui.Container()
-                    container_log.add_item(ui.TextDisplay('# ✅ Meta Aprovada'))
+                    container_log.add_item(ui.TextDisplay(f"# {CHECK} Meta Aprovada"))
                     container_log.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
                     container_log.add_item(ui.TextDisplay(f"**👤 Usuário:** {user.mention} (ID: {user.id})"))
-                    container_log.add_item(ui.TextDisplay(f"**✅ Aprovado por:** {interaction.user.mention}"))
+                    container_log.add_item(ui.TextDisplay(f"**{CHECK} Aprovado por:** {interaction.user.mention}"))
                     container_log.add_item(ui.TextDisplay(f"**🕒 Data:** {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')}"))
                     container_log.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
                     
@@ -306,7 +309,7 @@ class AvaliacaoMetaView(ui.LayoutView):
             
             # Fechar canal após 5 segundos
             await interaction.followup.send(
-                f"✅ Meta aprovada com sucesso!\n"
+                f"{CHECK} Meta aprovada com sucesso!\n"
                 f"Este canal será fechado em 5 segundos..."
             )
             
@@ -323,7 +326,7 @@ class AvaliacaoMetaView(ui.LayoutView):
             print(f"Erro ao aprovar meta: {e}")
             traceback.print_exc()
             await interaction.followup.send(
-                "❌ Erro ao aprovar meta. Tente novamente.",
+                f"{X} Erro ao aprovar meta. Tente novamente.",
                 ephemeral=True
             )
     
@@ -334,7 +337,7 @@ class AvaliacaoMetaView(ui.LayoutView):
                     any(role.id == (await self.db.get_config_meta(interaction.guild.id))[1] 
                         for role in interaction.user.roles)):
                 await interaction.response.send_message(
-                    "❌ Apenas administradores e gerentes podem reprovar metas!",
+                    f"{X} Apenas administradores e gerentes podem reprovar metas!",
                     ephemeral=True
                 )
                 return
@@ -364,7 +367,7 @@ class AvaliacaoMetaView(ui.LayoutView):
             
             # Fechar canal
             await interaction.followup.send(
-                f"❌ Meta reprovada.\n"
+                f"{X} Meta reprovada.\n"
                 f"Este canal será fechado em 5 segundos..."
             )
             
@@ -386,7 +389,7 @@ class MetaCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.db = Database()
-        print("✅ Cog de Meta carregado com sucesso!")
+        print("Cog de Meta carregado com sucesso!")
     
     @app_commands.command(name='meta', description='Envia o painel de registro de metas')
     @app_commands.checks.has_permissions(administrator=True)
@@ -405,13 +408,13 @@ class MetaCog(commands.Cog):
             
             view = MetaView(self.db)
             await interaction.response.send_message(view=view)
-            print(f"✅ Painel de meta enviado por {interaction.user}")
+            print(f"Painel de meta enviado por {interaction.user}")
             
         except Exception as e:
             print(f"Erro ao enviar painel de meta: {e}")
             traceback.print_exc()
             await interaction.response.send_message(
-                "❌ Erro ao enviar o painel de meta. Verifique as permissões do bot.",
+                f"{X} Erro ao enviar o painel de meta. Verifique as permissões do bot.",
                 ephemeral=True
             )
     
@@ -467,7 +470,7 @@ class MetaCog(commands.Cog):
     async def meta_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         if isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message(
-                "❌ Você não tem permissão para usar este comando! Apenas administradores.",
+                f"{X} Você não tem permissão para usar este comando! Apenas administradores.",
                 ephemeral=True
             )
 
@@ -477,7 +480,7 @@ async def setup(bot):
         cog = MetaCog(bot)
         await cog.db.init_db()
         await bot.add_cog(cog)
-        print("✅ MetaCog adicionado com sucesso!")
+        print("MetaCog adicionado com sucesso!")
     except Exception as e:
-        print(f"❌ Erro ao carregar MetaCog: {e}")
+        print(f"Erro ao carregar MetaCog: {e}")
         traceback.print_exc()

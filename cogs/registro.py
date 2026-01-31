@@ -3,6 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
+from cogs.emoji import CHECK
 
 # --- O MODAL DE PREENCHIMENTO ---
 class ModalRegistro(ui.Modal, title='📋 Complete seu Registro'):
@@ -136,7 +137,7 @@ class AprovacaoView(ui.View):
         self.rg = rg
         self.message_id = message_id
 
-    @ui.button(label="✅ Aprovar", style=discord.ButtonStyle.success, custom_id="aprovar_registro")
+    @ui.button(label="Aprovar", style=discord.ButtonStyle.success, custom_id="aprovar_registro", emoji=CHECK)
     async def aprovar(self, interaction: discord.Interaction, button: ui.Button):
         try:
             message_id = interaction.message.id
@@ -203,7 +204,7 @@ class AprovacaoView(ui.View):
             # Atualiza o embed
             embed = interaction.message.embeds[0]
             embed.color = discord.Color.green()
-            embed.title = "✅ Registro Aprovado"
+            embed.title = f"{CHECK} Registro Aprovado"
             embed.add_field(
                 name="Aprovado por", 
                 value=interaction.user.mention, 

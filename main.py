@@ -51,6 +51,7 @@ COGS = [
     'cogs.banco',
     'cogs.estoque',
     'cogs.dashboard',
+    'cogs.emoji',
 ]
 
 
