@@ -148,10 +148,15 @@ class BancoCog(commands.Cog):
 
     @app_commands.command(name="banco", description=f"{LIST} Ver banco pessoal e histórico")
     async def banco(self, interaction: discord.Interaction, usuario: discord.Member = None):
+        if not interaction.guild:
+            await interaction.response.send_message(f"{X} Este comando só funciona em servidor.", ephemeral=True)
+            return
         alvo = usuario or interaction.user
         saldo, ult_fab, ult_venda = await self.db.get_banco_usuario(interaction.guild.id, alvo.id, str(alvo))
         view = BancoView(self.db, alvo, saldo, ult_fab, ult_venda)
         await interaction.response.send_message(view=view, ephemeral=True)
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(BancoCog(bot))
+    cog = BancoCog(bot)
+    await cog.db.init_db()
+    await bot.add_cog(cog)
