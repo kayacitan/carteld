@@ -3,7 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH
+from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH, FOLDER
 
 
 FREQ_OPTIONS = [
@@ -275,7 +275,7 @@ class FarmUserPanelView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Clique no botão abaixo para abrir sua pasta de farm."))
 
-        btn_open = ui.Button(label="📁 Abrir pasta", style=discord.ButtonStyle.success)
+        btn_open = ui.Button(label="Abrir pasta", style=discord.ButtonStyle.secondary, emoji=FOLDER)
         btn_open.callback = self._open_folder
         container.add_item(ui.ActionRow(btn_open))
 
@@ -419,9 +419,9 @@ class FarmFolderView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f"# Servidor de {interaction.guild.name} • Meta de Farm"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
-            f"Frequência\n"
+            f"**Frequência**\n"
             f"{freq_txt}\n"
-            f"Descrição\n"
+            f"**Descrição**\n"
             f"Observação: {desc}\n"
             f"Quantidade: {qty_txt}\n"
             f"Tipo: {tipo}"
