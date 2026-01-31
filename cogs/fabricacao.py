@@ -9,7 +9,7 @@ from utils.emojis import CHECK, X, DIN, PIGGY, STORE, USER, CONTAINER, SETTINGS,
 # Definição dos produtos
 PRODUTOS = {
     "masterpick": {
-        "nome": "Masterpick",
+        "nome": "• Masterpick",
         "custo": 500,
         "emoji": TOOL,
         "materiais": {
@@ -21,7 +21,7 @@ PRODUTOS = {
         }
     },
     "camisa_forca": {
-        "nome": "Camisa de Força",
+        "nome": "• Camisa de Força",
         "custo": 1950,
         "emoji": SHIRT,
         "materiais": {
@@ -29,7 +29,7 @@ PRODUTOS = {
         }
     },
     "ticket_corrida": {
-        "nome": "Ticket de Corrida",
+        "nome": "• Ticket de Corrida",
         "custo": 360,
         "emoji": TICKET,
         "materiais": {
