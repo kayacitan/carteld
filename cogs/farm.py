@@ -3,7 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH, FOLDER
+from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH, FOLDER, TOGGLE_OFF, TOGGLE_ON
 
 
 FREQ_OPTIONS = [
@@ -51,7 +51,7 @@ def _build_meta_text(cfg: dict) -> str:
     qty = cfg.get("meta_qty")
     tipo = cfg.get("meta_tipo") or "-"
     qty_txt = str(qty) if qty is not None else "-"
-    return f"Descrição: {desc}\nQuantidade: {qty_txt}\nTipo: {tipo}"
+    return f"**Descrição:** {desc}\n**Quantidade:** {qty_txt}\n**Tipo:** {tipo}"
 
 
 class FarmConfigView(ui.LayoutView):
@@ -69,7 +69,7 @@ class FarmConfigView(ui.LayoutView):
         status_txt = _bool_label(cfg["enabled"])
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# Sistema de Farms"))
+        container.add_item(ui.TextDisplay(f"# {SETTINGS} Sistema de Farm"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         btn_role = ui.Button(label="⚙️ Editar", style=discord.ButtonStyle.secondary)
@@ -87,11 +87,11 @@ class FarmConfigView(ui.LayoutView):
         btn_freq.callback = self._edit_freq
         try:
             container.add_item(ui.Section(
-                ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n{freq_txt}"),
+                ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n**{freq_txt}**"),
                 accessory=btn_freq
             ))
         except Exception:
-            container.add_item(ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n{freq_txt}"))
+            container.add_item(ui.TextDisplay(f"**🗂️ Tipo de Meta Configurada**\n**{freq_txt}**"))
             container.add_item(ui.ActionRow(btn_freq))
 
         btn_meta = ui.Button(label="⚙️ Editar", style=discord.ButtonStyle.secondary)
@@ -106,10 +106,11 @@ class FarmConfigView(ui.LayoutView):
             container.add_item(ui.ActionRow(btn_meta))
 
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
-        container.add_item(ui.TextDisplay(f"Status: **{status_txt}**"))
+        status_badge = f"🟢 **Ativo**" if cfg["enabled"] == 1 else f"🔴 **Inativo**"
+        container.add_item(ui.TextDisplay(f"Status: {status_badge}"))
 
         btn_toggle = ui.Button(
-            label=("🔒 Ativar Farm" if cfg["enabled"] == 0 else "🔓 Desativar Farm"),
+            label=(f"{TOGGLE_ON} Desativar Farm" if cfg["enabled"] == 1 else f"{TOGGLE_OFF} Ativar Farm"),
             style=discord.ButtonStyle.success if cfg["enabled"] == 0 else discord.ButtonStyle.danger
         )
         btn_toggle.callback = self._toggle
@@ -156,7 +157,7 @@ class FarmEditRoleView(ui.LayoutView):
         self.guild = guild
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# Cargo de Aprovador do Farm"))
+        container.add_item(ui.TextDisplay(f"# {SETTINGS} Cargo de Aprovador do Farm"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Selecione o cargo que poderá aprovar o farm."))
 
@@ -190,7 +191,7 @@ class FarmEditFreqView(ui.LayoutView):
         self.guild = guild
 
         container = ui.Container()
-        container.add_item(ui.TextDisplay("# Tipo de Meta"))
+        container.add_item(ui.TextDisplay(f"# {SETTINGS} Tipo de Meta"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("Selecione a frequência da meta."))
 
