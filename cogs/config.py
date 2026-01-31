@@ -19,7 +19,7 @@ class ConfigView(ui.LayoutView):
 
         # Canal de logs (fabricação/vendas/encomendas/banco)
         self.sel_canal_logs = ui.ChannelSelect(
-            placeholder=f"{LIST} {SETTINGS} Selecionar canal de logs (geral)",
+            placeholder="Selecionar canal de logs (geral)",
             channel_types=[discord.ChannelType.text],
             min_values=1,
             max_values=1
@@ -29,7 +29,7 @@ class ConfigView(ui.LayoutView):
 
         # Canal log metas (mantendo teu sistema meta)
         self.sel_canal_meta = ui.ChannelSelect(
-            placeholder=f"{LIST} {SETTINGS} Selecionar canal de logs (meta)",
+            placeholder="Selecionar canal de logs (meta)",
             channel_types=[discord.ChannelType.text],
             min_values=1,
             max_values=1
@@ -42,7 +42,7 @@ class ConfigView(ui.LayoutView):
 
         # Cargo gerente (já existia no meta/config)
         self.sel_cargo_gerente = ui.RoleSelect(
-            placeholder=f"{SETTINGS} Selecionar cargo de gerente",
+            placeholder="Selecionar cargo de gerente",
             min_values=1,
             max_values=1
         )
@@ -51,7 +51,7 @@ class ConfigView(ui.LayoutView):
 
         # Cargo meta paga
         self.sel_cargo_meta = ui.RoleSelect(
-            placeholder=f"{CHECK} Selecionar cargo de meta paga",
+            placeholder="Selecionar cargo de meta paga",
             min_values=1,
             max_values=1
         )
@@ -60,7 +60,7 @@ class ConfigView(ui.LayoutView):
 
         # Novo: cargo vendedor
         self.sel_cargo_vendedor = ui.RoleSelect(
-            placeholder=f"{VENDAS} Selecionar cargo de vendedor",
+            placeholder="Selecionar cargo de vendedor",
             min_values=1,
             max_values=1
         )
@@ -68,7 +68,7 @@ class ConfigView(ui.LayoutView):
         container.add_item(ui.ActionRow(self.sel_cargo_vendedor))
 
         self.sel_cargo_fabricante = ui.RoleSelect(
-            placeholder=f"{STORE} Selecionar cargo de fabricante",
+            placeholder="Selecionar cargo de fabricante",
             min_values=1,
             max_values=1
         )
@@ -77,7 +77,7 @@ class ConfigView(ui.LayoutView):
 
         # Cargos boas-vindas
         self.sel_cargo_membro = ui.RoleSelect(
-            placeholder=f"{USER} Selecionar cargo de membro",
+            placeholder="Selecionar cargo de membro",
             min_values=1,
             max_values=1
         )
@@ -85,7 +85,7 @@ class ConfigView(ui.LayoutView):
         container.add_item(ui.ActionRow(self.sel_cargo_membro))
 
         self.sel_cargo_morador = ui.RoleSelect(
-            placeholder=f"{USER} Selecionar cargo de morador",
+            placeholder="Selecionar cargo de morador",
             min_values=1,
             max_values=1
         )
