@@ -3,7 +3,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import traceback
 from database import Database
-from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST
+from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH
 
 
 FREQ_OPTIONS = [
@@ -356,10 +356,10 @@ class FarmFolderView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f"# {self.owner_mention}, essa é sua pasta de farm!"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        btn_close = ui.Button(label="🗑️ Fechar Pasta", style=discord.ButtonStyle.danger)
+        btn_close = ui.Button(label="Fechar Pasta", style=discord.ButtonStyle.danger, emoji=TRASH)
         btn_close.callback = self._close_folder
 
-        btn_meta = ui.Button(label="👁️ Ver Metas", style=discord.ButtonStyle.secondary)
+        btn_meta = ui.Button(label="Ver Metas", style=discord.ButtonStyle.secondary, emoji=EYE)
         btn_meta.callback = self._show_meta
 
         container.add_item(ui.ActionRow(btn_close, btn_meta))
@@ -419,10 +419,12 @@ class FarmFolderView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f"# Servidor de {interaction.guild.name} • Meta de Farm"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay(
-            f"Frequência\n{freq_txt}\n"
-            f"Descrição\n{desc}\n"
-            f"Quantidade\n{qty_txt}\n"
-            f"Tipo\n{tipo}"
+            f"Frequência\n"
+            f"{freq_txt}\n"
+            f"Descrição\n"
+            f"Observação: {desc}\n"
+            f"Quantidade: {qty_txt}\n"
+            f"Tipo: {tipo}"
         ))
 
         view = ui.LayoutView()
