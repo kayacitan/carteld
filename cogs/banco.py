@@ -151,10 +151,19 @@ class BancoCog(commands.Cog):
         if not interaction.guild:
             await interaction.response.send_message(f"{X} Este comando só funciona em servidor.", ephemeral=True)
             return
-        alvo = usuario or interaction.user
-        saldo, ult_fab, ult_venda = await self.db.get_banco_usuario(interaction.guild.id, alvo.id, str(alvo))
-        view = BancoView(self.db, alvo, saldo, ult_fab, ult_venda)
-        await interaction.response.send_message(view=view, ephemeral=True)
+        try:
+            await interaction.response.defer(ephemeral=True)
+            alvo = usuario or interaction.user
+            saldo, ult_fab, ult_venda = await self.db.get_banco_usuario(interaction.guild.id, alvo.id, str(alvo))
+            view = BancoView(self.db, alvo, saldo, ult_fab, ult_venda)
+            await interaction.followup.send(view=view, ephemeral=True)
+        except Exception as e:
+            print(f"Erro no comando /banco: {e}")
+            traceback.print_exc()
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"{X} Erro ao abrir o banco.", ephemeral=True)
+            else:
+                await interaction.followup.send(f"{X} Erro ao abrir o banco.", ephemeral=True)
 
 async def setup(bot: commands.Bot):
     cog = BancoCog(bot)

@@ -42,7 +42,7 @@ PRODUTOS = {
 
 
 # --- MODAL PARA QUANTIDADE ---
-class QuantidadeModal(ui.Modal, title=f'{STORE} Quantidade de Fabricação'):
+class QuantidadeModal(ui.Modal, title='Quantidade de Fabricação'):
     def __init__(self, produto_id: str, produto: dict, db: Database):
         super().__init__()
         self.produto_id = produto_id
