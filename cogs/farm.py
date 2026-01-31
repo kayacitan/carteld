@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord import ui, app_commands
 from discord.ext import commands
@@ -314,8 +315,10 @@ class FarmUserPanelView(ui.LayoutView):
                         ephemeral=True
                     )
                     return
+                await self.db.close_farm_channel(existing_id)
 
-            await interaction.response.defer(ephemeral=True)
+            if not interaction.response.is_done():
+                await interaction.response.defer(ephemeral=True)
 
             overwrites = {
                 interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -352,7 +355,10 @@ class FarmUserPanelView(ui.LayoutView):
             print(f"Erro ao abrir pasta de farm: {e}")
             traceback.print_exc()
             try:
-                await interaction.followup.send(f"{X} Erro ao abrir a pasta de farm.", ephemeral=True)
+                if interaction.response.is_done():
+                    await interaction.followup.send(f"{X} Erro ao abrir a pasta de farm.", ephemeral=True)
+                else:
+                    await interaction.response.send_message(f"{X} Erro ao abrir a pasta de farm.", ephemeral=True)
             except Exception:
                 pass
 
@@ -367,10 +373,20 @@ class FarmFolderView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f"** {self.owner_mention}, essa é sua pasta de farm!**"))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        btn_close = ui.Button(label="Fechar Pasta", style=discord.ButtonStyle.danger, emoji=TRASH)
+        btn_close = ui.Button(
+            label="Fechar Pasta",
+            style=discord.ButtonStyle.danger,
+            emoji=TRASH,
+            custom_id="farm:fechar_pasta"
+        )
         btn_close.callback = self._close_folder
 
-        btn_meta = ui.Button(label="Ver Metas", style=discord.ButtonStyle.secondary, emoji=EYE)
+        btn_meta = ui.Button(
+            label="Ver Metas",
+            style=discord.ButtonStyle.secondary,
+            emoji=EYE,
+            custom_id="farm:ver_metas"
+        )
         btn_meta.callback = self._show_meta
 
         container.add_item(ui.ActionRow(btn_close, btn_meta))
@@ -402,6 +418,7 @@ class FarmFolderView(ui.LayoutView):
         try:
             await self.db.close_farm_channel(interaction.channel.id)
             await interaction.response.send_message(f"{CHECK} Pasta será fechada em 5 segundos.", ephemeral=True)
+            await asyncio.sleep(5)
             await interaction.channel.delete(reason=f"Pasta de farm fechada por {interaction.user}")
         except Exception as e:
             print(f"Erro ao fechar pasta de farm: {e}")

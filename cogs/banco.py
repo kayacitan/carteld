@@ -152,7 +152,8 @@ class BancoCog(commands.Cog):
             await interaction.response.send_message(f"{X} Este comando só funciona em servidor.", ephemeral=True)
             return
         try:
-            if not interaction.response.is_done():\n                await interaction.response.defer(ephemeral=True)
+            if not interaction.response.is_done():
+                await interaction.response.defer(ephemeral=True)
             alvo = usuario or interaction.user
             saldo, ult_fab, ult_venda = await self.db.get_banco_usuario(interaction.guild.id, alvo.id, str(alvo))
             view = BancoView(self.db, alvo, saldo, ult_fab, ult_venda)
