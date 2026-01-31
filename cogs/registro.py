@@ -137,7 +137,7 @@ class AprovacaoView(ui.View):
         self.rg = rg
         self.message_id = message_id
 
-    @ui.button(label=f"{CHECK} Aprovar", style=discord.ButtonStyle.success, custom_id="aprovar_registro")
+    @ui.button(label="Aprovar", style=discord.ButtonStyle.success, custom_id="aprovar_registro", emoji=CHECK)
     async def aprovar(self, interaction: discord.Interaction, button: ui.Button):
         try:
             message_id = interaction.message.id
@@ -249,7 +249,7 @@ class AprovacaoView(ui.View):
                 ephemeral=True
             )
     
-    @ui.button(label=f"{X} Negar", style=discord.ButtonStyle.danger, custom_id="negar_registro")
+    @ui.button(label="Negar", style=discord.ButtonStyle.danger, custom_id="negar_registro", emoji=X)
     async def negar(self, interaction: discord.Interaction, button: ui.Button):
         try:
             message_id = interaction.message.id

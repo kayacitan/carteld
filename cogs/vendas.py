@@ -275,16 +275,18 @@ class PainelVendasView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.large))
 
         btn_venda = ui.Button(
-            label=f"{VENDAS} Registrar Venda",
+            label="Registrar Venda",
             style=discord.ButtonStyle.secondary,
-            custom_id="painel_vendas:registrar_venda"
+            custom_id="painel_vendas:registrar_venda",
+            emoji=VENDAS
         )
         btn_venda.callback = self.abrir_venda
 
         btn_encomenda = ui.Button(
-            label=f"{PACKAGE} Registrar Encomenda",
+            label="Registrar Encomenda",
             style=discord.ButtonStyle.secondary,
-            custom_id="painel_vendas:registrar_encomenda"
+            custom_id="painel_vendas:registrar_encomenda",
+            emoji=PACKAGE
         )
         btn_encomenda.callback = self.abrir_encomenda
 
@@ -384,9 +386,10 @@ class LogEncomendaPendenteView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
         self.btn_confirmar = ui.Button(
-            label=f'{CHECK} Confirmar Entrega',
+            label='Confirmar Entrega',
             style=discord.ButtonStyle.success,
-            custom_id='encomenda_confirmar'
+            custom_id='encomenda_confirmar',
+            emoji=CHECK
         )
         self.btn_confirmar.callback = self.confirmar_entrega
         container.add_item(ui.ActionRow(self.btn_confirmar))

@@ -196,13 +196,15 @@ class AvaliacaoMetaView(ui.LayoutView):
         
         # Botões
         botao_aprovar = ui.Button(
-            label=f"{CHECK} Aprovar Meta",
+            label="Aprovar Meta",
+            emoji=CHECK,
             style=discord.ButtonStyle.success
         )
         botao_aprovar.callback = self.aprovar
         
         botao_reprovar = ui.Button(
-            label=f"{X} Reprovar Meta",
+            label="Reprovar Meta",
+            emoji=X,
             style=discord.ButtonStyle.danger
         )
         botao_reprovar.callback = self.reprovar
