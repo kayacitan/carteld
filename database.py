@@ -193,6 +193,30 @@ class Database:
                     )
                 ''')
 
+                # --- Farm (novo sistema) ---
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS farm_config (
+                        guild_id INTEGER PRIMARY KEY,
+                        enabled INTEGER DEFAULT 0,
+                        approver_role_id INTEGER,
+                        meta_freq TEXT,
+                        meta_desc TEXT,
+                        meta_qty INTEGER,
+                        meta_tipo TEXT,
+                        updated_at TEXT
+                    )
+                ''')
+
+                await db.execute('''
+                    CREATE TABLE IF NOT EXISTS farm_channels (
+                        channel_id INTEGER PRIMARY KEY,
+                        guild_id INTEGER NOT NULL,
+                        user_id INTEGER NOT NULL,
+                        active INTEGER DEFAULT 1,
+                        created_at TEXT NOT NULL
+                    )
+                ''')
+
                 # --- Registros pendentes (aprovacao persistente) ---
                 await db.execute('''
                     CREATE TABLE IF NOT EXISTS registros_pendentes (
@@ -464,6 +488,113 @@ class Database:
                 return True
         except Exception as e:
             print(f"❌ Erro ao registrar meta aprovada: {e}")
+            traceback.print_exc()
+            return False
+
+    # -------------------- FARM --------------------
+
+    async def get_farm_config(self, guild_id: int):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT guild_id, enabled, approver_role_id, meta_freq, meta_desc, meta_qty, meta_tipo
+                    FROM farm_config
+                    WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    return await cursor.fetchone()
+        except Exception as e:
+            print(f"❌ Erro ao buscar config de farm: {e}")
+            traceback.print_exc()
+            return None
+
+    async def set_farm_config(self, guild_id: int, approver_role_id=None,
+                              meta_freq: str | None = None, meta_desc: str | None = None,
+                              meta_qty: int | None = None, meta_tipo: str | None = None,
+                              enabled: int | None = None):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT enabled, approver_role_id, meta_freq, meta_desc, meta_qty, meta_tipo
+                    FROM farm_config
+                    WHERE guild_id = ?
+                ''', (int(guild_id),)) as cursor:
+                    row = await cursor.fetchone()
+
+                if row:
+                    cur_enabled, cur_approver, cur_freq, cur_desc, cur_qty, cur_tipo = row
+                else:
+                    cur_enabled, cur_approver, cur_freq, cur_desc, cur_qty, cur_tipo = (0, None, None, None, None, None)
+
+                new_enabled = cur_enabled if enabled is None else int(enabled)
+                new_approver = cur_approver if approver_role_id is None else int(approver_role_id)
+                new_freq = cur_freq if meta_freq is None else str(meta_freq)
+                new_desc = cur_desc if meta_desc is None else str(meta_desc)
+                new_qty = cur_qty if meta_qty is None else int(meta_qty)
+                new_tipo = cur_tipo if meta_tipo is None else str(meta_tipo)
+                now = datetime.now().isoformat()
+
+                await db.execute('''
+                    INSERT INTO farm_config
+                    (guild_id, enabled, approver_role_id, meta_freq, meta_desc, meta_qty, meta_tipo, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(guild_id)
+                    DO UPDATE SET enabled = ?, approver_role_id = ?, meta_freq = ?, meta_desc = ?, meta_qty = ?, meta_tipo = ?, updated_at = ?
+                ''', (
+                    int(guild_id), new_enabled, new_approver, new_freq, new_desc, new_qty, new_tipo, now,
+                    new_enabled, new_approver, new_freq, new_desc, new_qty, new_tipo, now
+                ))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao salvar config de farm: {e}")
+            traceback.print_exc()
+            return False
+
+    async def set_farm_enabled(self, guild_id: int, enabled: bool):
+        return await self.set_farm_config(guild_id, enabled=1 if enabled else 0)
+
+    async def set_farm_channel(self, guild_id: int, channel_id: int, user_id: int):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                now = datetime.now().isoformat()
+                await db.execute('''
+                    INSERT OR REPLACE INTO farm_channels (channel_id, guild_id, user_id, active, created_at)
+                    VALUES (?, ?, ?, 1, ?)
+                ''', (int(channel_id), int(guild_id), int(user_id), now))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao salvar canal de farm: {e}")
+            traceback.print_exc()
+            return False
+
+    async def get_farm_channel(self, guild_id: int, user_id: int):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                async with db.execute('''
+                    SELECT channel_id
+                    FROM farm_channels
+                    WHERE guild_id = ? AND user_id = ? AND active = 1
+                ''', (int(guild_id), int(user_id))) as cursor:
+                    row = await cursor.fetchone()
+                    return row[0] if row else None
+        except Exception as e:
+            print(f"❌ Erro ao buscar canal de farm: {e}")
+            traceback.print_exc()
+            return None
+
+    async def close_farm_channel(self, channel_id: int):
+        try:
+            async with aiosqlite.connect(self.db_name) as db:
+                await db.execute('''
+                    UPDATE farm_channels
+                    SET active = 0
+                    WHERE channel_id = ?
+                ''', (int(channel_id),))
+                await db.commit()
+                return True
+        except Exception as e:
+            print(f"❌ Erro ao fechar canal de farm: {e}")
             traceback.print_exc()
             return False
 

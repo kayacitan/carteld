@@ -4,6 +4,7 @@ from discord.ext import commands
 import traceback
 from database import Database
 from utils.emojis import CHECK, X, SETTINGS, VENDAS, STORE, USER, LIST
+from cogs.farm import FarmConfigView
 
 
 class ConfigView(ui.LayoutView):
@@ -91,6 +92,13 @@ class ConfigView(ui.LayoutView):
         )
         self.sel_cargo_morador.callback = self._set_cargo_morador
         container.add_item(ui.ActionRow(self.sel_cargo_morador))
+
+        container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
+        container.add_item(ui.TextDisplay(f"## {SETTINGS} Sistema de Farm"))
+
+        btn_farm = ui.Button(label="Configurar Farm", style=discord.ButtonStyle.secondary)
+        btn_farm.callback = self._open_farm
+        container.add_item(ui.ActionRow(btn_farm))
 
         self.add_item(container)
 
@@ -197,6 +205,17 @@ class ConfigView(ui.LayoutView):
             print(f"Erro config cargo morador: {e}")
             traceback.print_exc()
             await interaction.response.send_message(f"{X} Erro ao configurar cargo de morador.", ephemeral=True)
+
+    async def _open_farm(self, interaction: discord.Interaction):
+        try:
+            from cogs.farm import _get_farm_config
+            cfg = await _get_farm_config(self.db, interaction.guild.id)
+            view = FarmConfigView(self.db, interaction.guild, cfg)
+            await interaction.response.send_message(view=view, ephemeral=True)
+        except Exception as e:
+            print(f"Erro ao abrir config de farm: {e}")
+            traceback.print_exc()
+            await interaction.response.send_message(f"{X} Erro ao abrir configuração de farm.", ephemeral=True)
 
 class ConfigCog(commands.Cog):
     def __init__(self, bot):

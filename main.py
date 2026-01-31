@@ -52,6 +52,7 @@ COGS = [
     'cogs.estoque',
     'cogs.dashboard',
     'cogs.emojis',
+    'cogs.farm',
 ]
 
 
