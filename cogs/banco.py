@@ -7,6 +7,7 @@ import traceback
 from database import Database
 from utils.emojis import CHECK, X, DIN, PIGGY, SETTINGS, USER, LIST
 
+# imports dos emojis em inglês pq o nome do emoji tem q ser sem acentos e tal, aí fica mais fácil de usar em vários lugares do código sem se preocupar com encoding ou erros de digitação nesse caralho
 
 def _fmt_money(v: float) -> str:
     return f"R$ {float(v):,.2f}".replace(",", ".")
@@ -165,6 +166,8 @@ class BancoCog(commands.Cog):
                 await interaction.response.send_message(f"{X} Erro ao abrir o banco.", ephemeral=True)
             else:
                 await interaction.followup.send(f"{X} Erro ao abrir o banco.", ephemeral=True)
+
+# conclui o tratamento de erros  e o feedback em caso de falhassss                
 
 async def setup(bot: commands.Bot):
     cog = BancoCog(bot)

@@ -6,9 +6,9 @@ from database import Database
 from utils.emojis import STORE, X, PACKAGE, LIST, TOOL, SHIRT, TICKET
 
 PRODUTOS = {
-    "masterpick": {"nome": "Masterpick", "emoji": TOOL},
-    "camisa_forca": {"nome": "Camisa de Força", "emoji": SHIRT},
-    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": TICKET},
+    "fajuta": {"nome": "Fajuta", "emoji": TOOL},
+    "ap_pistol": {"nome": "AP Pistol", "emoji": TICKET},
+    "m16": {"nome": "M16", "emoji": SHIRT},
 }
 
 

@@ -8,9 +8,9 @@ from utils.emojis import CHECK, X, DIN, PIGGY, VENDAS, STORE, USER, PACKAGE, PAC
 
 
 PRODUTOS = {
-    "masterpick": {"nome": "Masterpick", "emoji": TOOL},
-    "camisa_forca": {"nome": "Camisa de Força", "emoji": SHIRT},
-    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": TICKET},
+    "fajuta": {"nome": "Fajuta", "emoji": TOOL},
+    "ap_pistol": {"nome": "AP Pistol", "emoji": TICKET},
+    "m16": {"nome": "M16", "emoji": SHIRT},
 }
 
 PAGES = {
@@ -513,3 +513,5 @@ async def setup(bot: commands.Bot):
     except Exception as e:
         print(f"Erro ao carregar DashboardCog: {e}")
         traceback.print_exc()
+
+

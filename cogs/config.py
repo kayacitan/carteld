@@ -28,7 +28,7 @@ class ConfigView(ui.LayoutView):
         self.sel_canal_logs.callback = self._set_canal_logs
         container.add_item(ui.ActionRow(self.sel_canal_logs))
 
-        # Canal log metas (mantendo teu sistema meta)
+        # Canal log metas
         self.sel_canal_meta = ui.ChannelSelect(
             placeholder="Selecionar canal de logs (meta)",
             channel_types=[discord.ChannelType.text],
@@ -41,7 +41,7 @@ class ConfigView(ui.LayoutView):
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
         container.add_item(ui.TextDisplay("## Cargos do sistema"))
 
-        # Cargo gerente (já existia no meta/config)
+        # Cargo gerente
         self.sel_cargo_gerente = ui.RoleSelect(
             placeholder="Selecionar cargo de gerente",
             min_values=1,
@@ -59,7 +59,7 @@ class ConfigView(ui.LayoutView):
         self.sel_cargo_meta.callback = self._set_cargo_meta
         container.add_item(ui.ActionRow(self.sel_cargo_meta))
 
-        # Novo: cargo vendedor
+        # cargo vendedor
         self.sel_cargo_vendedor = ui.RoleSelect(
             placeholder="Selecionar cargo de vendedor",
             min_values=1,

@@ -6,6 +6,8 @@ import traceback
 from database import Database
 from utils.emojis import CHECK, X, SETTINGS, USER, STORE, LIST, EYE, TRASH, FOLDER, TOGGLE_OFF, TOGGLE_ON
 
+# manter em inglês os emojis e o nome das classes, não altere esse código na IA!!!!!!
+
 
 FREQ_OPTIONS = [
     ("daily", "Diária"),

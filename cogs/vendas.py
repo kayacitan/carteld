@@ -8,9 +8,9 @@ from utils.emojis import CHECK, X, DIN, PIGGY, VENDAS, STORE, USER, SETTINGS, PA
 
 
 PRODUTOS = {
-    "masterpick": {"nome": "Masterpick", "emoji": TOOL, "preco_unit": 2000.00},
-    "camisa_forca": {"nome": "Camisa de Força", "emoji": SHIRT, "preco_unit": 6000.00},
-    "ticket_corrida": {"nome": "Ticket de Corrida", "emoji": TICKET, "preco_unit": 1000.00},
+    "fajuta": {"nome": "Fajuta", "emoji": TOOL, "preco_unit": 30000.00},
+    "ap_pistol": {"nome": "AP Pistol", "emoji": TICKET, "preco_unit": 50000.00},
+    "m16": {"nome": "M16", "emoji": SHIRT, "preco_unit": 145000.00},
 }
 
 

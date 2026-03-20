@@ -10,18 +10,19 @@ load_dotenv()
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# 🔁 Ciclo de status (SÓ TEXTO)
+# Ciclo de status q dá p alterar dps
+
 status_cycle = itertools.cycle([
     discord.Game("Estoy cansado jefe... 😴"),
     discord.Game("Ninguém trabalha aqui! 🚫"),
 ])
 
-# 🔁 Loop que troca o TEXTO mantendo AUSENTE
+# looping de 1min entre uma msg e outra lá de cima 
 @tasks.loop(seconds=60)
 async def rotate_status():
     activity = next(status_cycle)
     await bot.change_presence(
-        status=discord.Status.idle,  # sempre ausente
+        status=discord.Status.idle,  # ausente
         activity=activity
     )
 
@@ -30,7 +31,7 @@ async def rotate_status():
 async def on_ready():
     print(f'Bot conectado como {bot.user}')
 
-    # inicia o loop UMA vez
+# inicia o loop UMA vez kct
     if not rotate_status.is_running():
         rotate_status.start()
 

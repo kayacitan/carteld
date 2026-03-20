@@ -8,34 +8,43 @@ from utils.emojis import CHECK, X, DIN, PIGGY, STORE, USER, CONTAINER, SETTINGS,
 
 # Definição dos produtos
 PRODUTOS = {
-    "masterpick": {
-        "nome": "•  Masterpick",
-        "custo": 500,
+    "fajuta": {
+        "nome": "Fajuta",
+        "custo": 9000,
         "emoji": TOOL,
         "materiais": {
-            "Alumínio": 4,
-            "Ferro": 4,
-            "Borracha": 1,
-            "Cobre": 1,
-            "Saco Plástico": 1
+            "Ferrolho": 10,
+            "Cabo": 10,
+            "Culatra": 10,
+            "Slide": 10,
+            "Clip": 10,
+            "Titanio": 1
         }
     },
-    "camisa_forca": {
-        "nome": "•  Camisa de Força",
-        "custo": 1950,
-        "emoji": SHIRT,
-        "materiais": {
-            "Tecido": 8
-        }
-    },
-    "ticket_corrida": {
-        "nome": "•  Ticket de Corrida",
-        "custo": 360,
+    "ap_pistol": {
+        "nome": "AP Pistol",
+        "custo": 30000,
         "emoji": TICKET,
         "materiais": {
-            "Folha de Papel": 1,
-            "Lata de Tinta": 1,
-            "Embalagem Plástica": 1
+            "Ferrolho": 12,
+            "Cabo": 12,
+            "Culatra": 12,
+            "Slide": 12,
+            "Clip": 12,
+            "Titanio": 1
+        }
+    },
+    "m16": {
+        "nome": "M16",
+        "custo": 65250,
+        "emoji": SHIRT,
+        "materiais": {
+            "Ferrolho": 60,
+            "Cabo": 50,
+            "Culatra": 60,
+            "Slide": 60,
+            "Clip": 50,
+            "Titanio": 4
         }
     }
 }
@@ -119,7 +128,7 @@ class QuantidadeModal(ui.Modal, title='Quantidade de Fabricação'):
             pass
 
 
-# --- VIEW DE CONFIRMACAO ---
+# --- VIEW DE CONFIRMACAO --- alterei poucos containers e comentei o que cada parte faz
 class ConfirmacaoView(ui.LayoutView):
     def __init__(self, produto_id: str, produto: dict, quantidade: int, custo_total: float, materiais: str, db: Database):
         super().__init__()
@@ -179,7 +188,7 @@ class ConfirmacaoView(ui.LayoutView):
                 return
             self._finalizado = True
 
-            # Desabilitar botões (fica inacessível após confirmar)
+            # Desabilitar botões, manter em escadinha assim 
             for item in self.children:
                 if isinstance(item, ui.Container):
                     for comp in item.children:
@@ -227,7 +236,7 @@ class ConfirmacaoView(ui.LayoutView):
                 quantidade=self.quantidade
             )
 
-            # Atualizar banco pessoal (fabricação desconta)
+            # Atualizar banco pessoal (fabricação desconta, depois vou alterar)
             novo_saldo = await self.db.aplicar_movimento_banco(
                 guild_id=interaction.guild.id,
                 user_id=interaction.user.id,

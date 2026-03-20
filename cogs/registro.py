@@ -337,7 +337,6 @@ class RegistroView(ui.LayoutView):
         galeria_registro.add_item(media='https://media.discordapp.net/attachments/1366148719967211612/1465503657452765286/Cartel.png?ex=69795823&is=697806a3&hm=6d37d5b02ab93b40bb31234a9b2518a68222014a0eb9472be730b8b1c5990561&=&format=webp&quality=lossless')
         container.add_item(galeria_registro)
         
-        # ✅ BOTÃO DENTRO DE ACTIONROW DENTRO DO CONTAINER
         botao_registrar = ui.Button(
             label="Novo Membro",
             style=discord.ButtonStyle.secondary,
@@ -346,7 +345,7 @@ class RegistroView(ui.LayoutView):
         botao_registrar.callback = self.abrir_modal
         
         linha = ui.ActionRow(botao_registrar)
-        container.add_item(linha)  # ✅ ActionRow vai para dentro do Container!
+        container.add_item(linha)  
         
         # Adiciona o container completo
         self.add_item(container)
@@ -379,7 +378,7 @@ class RegistroView(ui.LayoutView):
                 pass
 
 
-# --- A ENGRENAGEM (COG) ---
+# --- REGISTROO (COG) ---
 class RegistroCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -388,7 +387,7 @@ class RegistroCog(commands.Cog):
         print("Cog de Registro carregado com sucesso!")
 
     async def cog_load(self):
-        # Garante que o banco esteja pronto e re-registra aprovações pendentes
+        # Garante que o banco esteja pronto e re-registra aprovações pendentes (nao lembro se coloquei em listas)
         await self.db.init_db()
         pendentes = await self.db.listar_registros_pendentes()
         for message_id, _guild_id, user_id, nome, rg in pendentes:
