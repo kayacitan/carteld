@@ -308,7 +308,7 @@ class LogFabricacaoView(ui.LayoutView):
         container.add_item(ui.TextDisplay(f'# {STORE} Nova Fabricação Realizada'))
         container.add_item(ui.Separator(spacing=discord.SeparatorSpacing.small))
 
-        container.add_item(ui.TextDisplay(f"**{USER} Usuário:** {usuario.mention} (ID: {usuario.id})"))
+        container.add_item(ui.TextDisplay(f"**{USER} Usuário:** {usuario.mention}"))
         container.add_item(ui.TextDisplay(f"**{PACKAGE} Produto:** {produto['nome']}"))
         container.add_item(ui.TextDisplay(f"**Quantidade:** {quantidade} unidade(s)"))
 
