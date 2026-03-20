@@ -23,8 +23,8 @@ PRODUTOS = {
     },
     "ap_pistol": {
         "nome": "AP Pistol",
-        "custo": 30000,
-        "emoji": TICKET,
+        "custo": 15000,
+        "emoji": TOOL,
         "materiais": {
             "Ferrolho": 12,
             "Cabo": 12,
@@ -37,7 +37,7 @@ PRODUTOS = {
     "m16": {
         "nome": "M16",
         "custo": 65250,
-        "emoji": SHIRT,
+        "emoji": TOOL,
         "materiais": {
             "Ferrolho": 60,
             "Cabo": 50,
